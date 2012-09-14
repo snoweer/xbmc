@@ -39,6 +39,10 @@
 #include "dialogs/GUIDialogKaiToast.h"
 #include "dialogs/GUIDialogProgress.h"
 #include "URL.h"
+#include "games/GameClient.h"
+#include "games/GameManager.h"
+#include "utils/StdString.h"
+
 
 using namespace std;
 using namespace XFILE;
@@ -588,6 +592,13 @@ void CAddonInstallJob::OnPostInstall(bool reloadAddon)
     VECADDONS addons;
     addons.push_back(m_addon);
     CJobManager::GetInstance().AddJob(new CRepositoryUpdateJob(addons), &CAddonInstaller::Get());
+  }
+
+  // Update the cache of game client addons used in the ROM-launching selection process
+  if (m_addon->Type() == ADDON_GAMEDLL)
+  {
+    GameClientPtr gameClient = boost::dynamic_pointer_cast<CGameClient>(m_addon);
+    CGameManager::Get().RegisterAddon(gameClient);
   }
 }
 

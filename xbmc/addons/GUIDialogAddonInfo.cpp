@@ -37,6 +37,8 @@
 #include "utils/URIUtils.h"
 #include "addons/AddonInstaller.h"
 #include "Application.h"
+#include "games/GameClient.h"
+#include "games/GameManager.h"
 
 #define CONTROL_BTN_INSTALL          6
 #define CONTROL_BTN_ENABLE           7
@@ -216,9 +218,17 @@ void CGUIDialogAddonInfo::OnEnable(bool enable)
   database.Open();
   database.DisableAddon(m_localAddon->ID(), !enable);
   database.Close();
-
+  
   if (m_localAddon->Type() == ADDON_PVRDLL && enable)
     g_application.StartPVRManager();
+  
+  if (m_localAddon->Type() == ADDON_GAMEDLL)
+  {
+    if (enable)
+      CGameManager::Get().RegisterAddon(boost::dynamic_pointer_cast<CGameClient>(m_localAddon));
+    else
+      CGameManager::Get().UnregisterAddon(m_localAddon->ID());
+  }
 
   SetItem(m_item);
   UpdateControls();

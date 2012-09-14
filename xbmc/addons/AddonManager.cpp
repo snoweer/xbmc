@@ -40,6 +40,10 @@
 #include "DllPVRClient.h"
 #include "pvr/addons/PVRClient.h"
 #endif
+#ifdef HAS_GAMECLIENTS
+#include "games/GameClient.h"
+#include "games/GameManager.h"
+#endif
 //#ifdef HAS_SCRAPERS
 #include "Scraper.h"
 //#endif
@@ -49,6 +53,7 @@
 #include "Service.h"
 #include "pvr/PVRManager.h"
 #include "pvr/addons/PVRClients.h"
+#include "games/GameManager.h"
 #include "Util.h"
 
 using namespace std;
@@ -115,6 +120,7 @@ AddonPtr CAddonMgr::Factory(const cp_extension_t *props)
     case ADDON_VIZ:
     case ADDON_SCREENSAVER:
     case ADDON_PVRDLL:
+    case ADDON_GAMEDLL:
       { // begin temporary platform handling for Dlls
         // ideally platforms issues will be handled by C-Pluff
         // this is not an attempt at a solution
@@ -155,6 +161,12 @@ AddonPtr CAddonMgr::Factory(const cp_extension_t *props)
         {
 #ifdef HAS_PVRCLIENTS
           return AddonPtr(new CPVRClient(props));
+#endif
+        }
+        else if (type == ADDON_GAMEDLL)
+        {
+#if defined(HAS_GAMECLIENTS)
+          return AddonPtr(new CGameClient(props));
 #endif
         }
         else
@@ -287,7 +299,16 @@ bool CAddonMgr::Init()
   }
 
   FindAddons();
+  // TODO: This should be done in another thread, as it loads/unloads every DLL
+  RegisterGameClientAddons();
   return true;
+}
+
+void CAddonMgr::RegisterGameClientAddons()
+{
+  VECADDONS gameClients;
+  GetAddons(ADDON_GAMEDLL, gameClients, true);
+  CGameManager::Get().RegisterAddons(gameClients);
 }
 
 void CAddonMgr::DeInit()
@@ -557,6 +578,8 @@ void CAddonMgr::RemoveAddon(const CStdString& ID)
     SetChanged();
     NotifyObservers(ObservableMessageAddons);
   }
+  // Let the game manager update the information associated with this addon
+  CGameManager::Get().UnregisterAddon(ID);
 }
 
 const char *CAddonMgr::GetTranslatedString(const cp_cfg_element_t *root, const char *tag)
@@ -615,6 +638,10 @@ AddonPtr CAddonMgr::AddonFromProps(AddonProps& addonProps)
       return AddonPtr(new CAddonLibrary(addonProps));
     case ADDON_PVRDLL:
       return AddonPtr(new CPVRClient(addonProps));
+#ifdef HAS_GAMECLIENTS
+    case ADDON_GAMEDLL:
+      return AddonPtr(new CGameClient(addonProps));
+#endif
     case ADDON_REPOSITORY:
       return AddonPtr(new CRepository(addonProps));
     default:

@@ -31,6 +31,7 @@
 #include "dialogs/GUIDialogYesNo.h"
 #include "dialogs/GUIDialogKaiToast.h"
 #include "TextureDatabase.h"
+#include "games/GameManager.h"
 #include "URL.h"
 
 using namespace XFILE;
@@ -243,7 +244,10 @@ bool CRepositoryUpdateJob::DoWork()
                                              g_localizeStrings.Get(24096),
                                              g_localizeStrings.Get(24097),
                                              ""))
+        {
           database.DisableAddon(addons[i]->ID());
+          CGameManager::Get().UnregisterAddon(addons[i]->ID());
+        }
       }
     }
     database.BreakAddon(addons[i]->ID(), addons[i]->Props().broken);
