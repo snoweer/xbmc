@@ -23,6 +23,7 @@
 #include "GameInfoTagLoader.h"
 #include "GameboyTag.h"
 #include "GBATag.h"
+#include "SnesTag.h"
 #include "games/GameManager.h"
 #include "utils/log.h"
 #include "utils/URIUtils.h"
@@ -50,6 +51,9 @@ bool CGameInfoTagLoader::Load(const CStdString &strFileName, CGameInfoTag &tag)
     break;
   case SYSTEM_GameBoyAdvance:
     myTag = new CGBATag();
+    break;
+  case SYSTEM_SuperNintendo:
+    myTag = new CSnesTag();
     break;
   default:
     break;

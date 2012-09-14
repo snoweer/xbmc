@@ -574,6 +574,7 @@
     <ClCompile Include="..\..\xbmc\games\tags\GameInfoTag.cpp" />
     <ClCompile Include="..\..\xbmc\games\tags\GameInfoTagLoader.cpp" />
     <ClCompile Include="..\..\xbmc\games\tags\GBATag.cpp" />
+    <ClCompile Include="..\..\xbmc\games\tags\SnesTag.cpp" />
     <ClCompile Include="..\..\xbmc\GUIInfoManager.cpp" />
     <ClCompile Include="..\..\xbmc\GUILargeTextureManager.cpp" />
     <ClCompile Include="..\..\xbmc\guilib\AnimatedGif.cpp" />
@@ -1116,6 +1117,7 @@
     <ClInclude Include="..\..\xbmc\games\tags\GameInfoTag.h" />
     <ClInclude Include="..\..\xbmc\games\tags\GBATag.h" />
     <ClInclude Include="..\..\xbmc\games\tags\GameInfoTagLoader.h" />
+    <ClInclude Include="..\..\xbmc\games\tags\SnesTag.h" />
     <ClInclude Include="..\..\xbmc\games\tags\Tag.h" />
     <ClInclude Include="..\..\xbmc\guilib\GUIKeyboard.h" />
     <ClInclude Include="..\..\xbmc\guilib\GUIKeyboardFactory.h" />

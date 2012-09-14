@@ -2846,6 +2846,9 @@
     <ClCompile Include="..\..\xbmc\games\tags\GBATag.cpp">
       <Filter>games\tags</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\xbmc\games\tags\SnesTag.cpp">
+      <Filter>games\tags</Filter>
+    </ClCompile>
     <ClCompile Include="..\..\xbmc\games\tags\GameboyTag.cpp">
       <Filter>games\tags</Filter>
     </ClCompile>
@@ -5792,6 +5795,9 @@
       <Filter>games\tags</Filter>
     </ClInclude>
     <ClInclude Include="..\..\xbmc\games\tags\GBATag.h">
+      <Filter>games\tags</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\xbmc\games\tags\SnesTag.h">
       <Filter>games\tags</Filter>
     </ClInclude>
     <ClInclude Include="..\..\xbmc\games\tags\Tag.h">
