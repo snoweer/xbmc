@@ -198,7 +198,7 @@ bool CRetroPlayerVideo::CheckConfiguration(const DVDVideoPicture &picture)
       break;
     case RETRO_PIXEL_FORMAT_0RGB1555:
     default:
-      CLog::Log(LOGINFO, "RetroPlayerVideo: Pixel Format: RGB565");
+      CLog::Log(LOGINFO, "RetroPlayerVideo: Pixel Format: RGB1555");
       format = PIX_FMT_RGB555LE;
       break;
     }
