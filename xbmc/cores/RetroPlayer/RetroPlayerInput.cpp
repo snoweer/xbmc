@@ -68,8 +68,13 @@ int16_t CRetroPlayerInput::GetInput(unsigned port, unsigned device, unsigned ind
   return 0;
 }
 
-void CRetroPlayerInput::OnAction(const CAction &action)
+void CRetroPlayerInput::ProcessKeyDown(const CKey &key)
 {
+  // TODO: Use ID of current window, in case it defines joypad keys outside of
+  // <FullscreenGame>. Maybe, if current window ID finds no action, then fallback
+  // to WINDOW_FULLSCREEN_GAME.
+  CAction action = CButtonTranslator::GetInstance().GetAction(WINDOW_FULLSCREEN_GAME, key);
+
   CSingleLock lock(m_statesGuard);
 
   int id = TranslateActionID(action.GetID());
@@ -84,16 +89,15 @@ void CRetroPlayerInput::OnAction(const CAction &action)
   }
 }
 
-void CRetroPlayerInput::ProcessKeyUp(XBMC_Event &newEvent)
+void CRetroPlayerInput::ProcessKeyUp(const CKey &key)
 {
-  CKey key = g_Keyboard.ProcessKeyDown(newEvent.key.keysym);
-
   // TODO: Use ID of current window, in case it defines joypad keys outside of
   // <FullscreenGame>. Maybe, if current window ID finds no action, then fallback
   // to WINDOW_FULLSCREEN_GAME.
   CAction action = CButtonTranslator::GetInstance().GetAction(WINDOW_FULLSCREEN_GAME, key);
 
   CSingleLock lock(m_statesGuard);
+
   int id = TranslateActionID(action.GetID());
   if (0 <= id && id < (int)(sizeof(m_joypadState) / sizeof(m_joypadState[0])))
   {
@@ -104,13 +108,6 @@ void CRetroPlayerInput::ProcessKeyUp(XBMC_Event &newEvent)
   {
     CLog::Log(LOGDEBUG, "RetroPlayerInput: Invalid KeyUp, action=%s, ID=%d", action.GetName().c_str(), action.GetID());
   }
-}
-
-/* static */
-void CRetroPlayerInput::OnKeyUp(XBMC_Event& newEvent)
-{
-  if (m_self && m_self->m_bActive)
-    m_self->ProcessKeyUp(newEvent);
 }
 
 int CRetroPlayerInput::TranslateActionID(int id) const

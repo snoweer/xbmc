@@ -33,7 +33,7 @@
 #include "cores/dvdplayer/DVDFileInfo.h"
 #include "cores/AudioEngine/AEFactory.h"
 #include "cores/AudioEngine/Utils/AEUtil.h"
-#include "cores/RetroPlayer/RetroPlayerInput.h"
+#include "cores/RetroPlayer/RetroPlayer.h"
 #include "PlayListPlayer.h"
 #include "Autorun.h"
 #include "video/Bookmark.h"
@@ -480,11 +480,16 @@ bool CApplication::OnEvent(XBMC_Event& newEvent)
         CApplicationMessenger::Get().Quit();
       break;
     case XBMC_KEYDOWN:
+      // RetroPlayer is notified of the key press in OnKey()
       g_application.OnKey(g_Keyboard.ProcessKeyDown(newEvent.key.keysym));
       break;
     case XBMC_KEYUP:
-      if (g_application.IsPlayingGame() || (g_application.IsPaused() && g_application.m_eCurrentPlayer == EPC_RETROPLAYER))
-        CRetroPlayerInput::OnKeyUp(newEvent);
+      if (g_application.m_pPlayer && g_application.m_eCurrentPlayer == EPC_RETROPLAYER)
+      {
+        CRetroPlayer* rp = dynamic_cast<CRetroPlayer*>(g_application.m_pPlayer);
+        if (rp)
+          rp->GetInput().ProcessKeyUp(CKeyboardStat::TranslateKey(newEvent.key.keysym));
+      }
       g_Keyboard.ProcessKeyUp();
       break;
     case XBMC_MOUSEBUTTONDOWN:
@@ -2458,8 +2463,13 @@ bool CApplication::OnKey(const CKey& key)
       if (action.GetID() == 0)
         action = CButtonTranslator::GetInstance().GetAction(iWin, key);
     }
-    else if (IsPlayingGame() || (IsPaused() && m_eCurrentPlayer == EPC_RETROPLAYER))
+    else if (m_pPlayer && m_eCurrentPlayer == EPC_RETROPLAYER)
     {
+      // Notify RetroPlayer's input system of the pressed key
+      CRetroPlayer* rp = dynamic_cast<CRetroPlayer*>(m_pPlayer);
+      if (rp)
+        rp->GetInput().ProcessKeyDown(key);
+
       // Fetch action from <FullscreenGame> tag instead of <FullscreenVideo>
       action = CButtonTranslator::GetInstance().GetAction(WINDOW_FULLSCREEN_GAME, key);
     }
@@ -2903,12 +2913,6 @@ bool CApplication::OnAction(const CAction &action)
     else if (iPlaylist == PLAYLIST_MUSIC && g_windowManager.GetActiveWindow() != WINDOW_MUSIC_PLAYLIST)
       g_windowManager.ActivateWindow(WINDOW_MUSIC_PLAYLIST);
     return true;
-  }
-  if (ACTION_GAME_CONTROL_START <= action.GetID() && action.GetID() <= ACTION_GAME_CONTROL_END)
-  {
-    // Allow RetroPlayer to process input
-    if (IsPlayingGame() || (IsPaused() && m_eCurrentPlayer == EPC_RETROPLAYER))
-      return m_pPlayer->OnAction(action);
   }
   return false;
 }

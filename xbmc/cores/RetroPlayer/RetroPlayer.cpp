@@ -227,16 +227,6 @@ void CRetroPlayer::OnExit()
   m_bStop = true;
 }
 
-bool CRetroPlayer::OnAction(const CAction &action)
-{
-  if (ACTION_GAME_CONTROL_START <= action.GetID() && action.GetID() <= ACTION_GAME_CONTROL_END)
-  {
-    m_retroPlayer->m_input.OnAction(action);
-    return true;
-  }
-  return false;
-}
-
 /* static */
 void CRetroPlayer::OnVideoFrame(const void *data, unsigned width, unsigned height, size_t pitch)
 {

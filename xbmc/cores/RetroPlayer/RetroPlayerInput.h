@@ -23,7 +23,6 @@
 
 #include "games/libretro/libretro.h"
 #include "guilib/Key.h"
-#include "windowing/XBMC_events.h"
 #include "threads/Thread.h"
 
 #include <stdint.h>
@@ -50,22 +49,14 @@ public:
   int16_t GetInput(unsigned port, unsigned device, unsigned index, unsigned id);
 
   /**
-   * Called by CApplication with an action containing the ID of the button
-   * pressed. Note: the ID needs to be translated before modifying the state
-   * structure.
+   * Marks a key as pressed.
    */
-  void OnAction(const CAction &action);
+  void ProcessKeyDown(const CKey &key);
 
   /**
    * Marks a key as released.
    */
-  void ProcessKeyUp(XBMC_Event &newEvent);
-
-  /**
-   * Called by CApplication when a key is released, and forwards said key to
-   * ProcessKeyUp(). Precondition: Begin() must have been called.
-   */
-  static void OnKeyUp(XBMC_Event &newEvent);
+  void ProcessKeyUp(const CKey &key);
 
   static CRetroPlayerInput *m_self;
 

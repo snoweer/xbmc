@@ -40,7 +40,12 @@ public:
   virtual bool OpenFile(const CFileItem& file, const CPlayerOptions& options);
   virtual bool CloseFile();
 
-  virtual bool OnAction(const CAction &action);
+  virtual bool OnAction(const CAction &action)
+  {
+    // No need to forward ACTION_GAME_CONTROL_* to m_input,
+    // CApplication::OnEvent() takes care of that
+    return false;
+  }
 
   virtual bool IsPlaying() const { return !m_bStop; }
   virtual void Pause();
@@ -48,6 +53,8 @@ public:
 
   virtual bool HasVideo() const { return true; }
   virtual bool HasAudio() const { return true; }
+
+  CRetroPlayerInput &GetInput() { return m_input; }
 
   virtual void GetAudioInfo(CStdString& strAudioInfo) { strAudioInfo = "CRetroPlayer:GetAudioInfo"; }
   virtual void GetVideoInfo(CStdString& strVideoInfo) { strVideoInfo = "CRetroPlayer:GetVideoInfo"; }
