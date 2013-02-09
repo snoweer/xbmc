@@ -22,20 +22,26 @@
 
 #include "RetroPlayerInput.h"
 #include "games/libretro/libretro.h"
+#include "guilib/GUIWindowManager.h"
 #include "input/ButtonTranslator.h"
 #include "input/KeyboardStat.h"
 #include "utils/log.h"
 
-CRetroPlayerInput *CRetroPlayerInput::m_self = NULL;
+#if defined(TARGET_WINDOWS)
+#include "input/windows/WINJoystick.h"
+#elif defined(HAS_SDL_JOYSTICK) || defined(HAS_EVENT_SERVER)
+#include "SDLJoystick.h"
+#endif
+
 
 CRetroPlayerInput::CRetroPlayerInput() : m_bActive(false)
 {
-  m_self = this;
 }
 
 void CRetroPlayerInput::Begin()
 {
   memset(m_joypadState, 0, sizeof(m_joypadState));
+  memset(m_buttonState, 0, sizeof(m_buttonState));
   m_bActive = true;
 }
 
@@ -107,6 +113,49 @@ void CRetroPlayerInput::ProcessKeyUp(const CKey &key)
   else
   {
     CLog::Log(LOGDEBUG, "RetroPlayerInput: Invalid KeyUp, action=%s, ID=%d", action.GetName().c_str(), action.GetID());
+  }
+}
+
+void CRetroPlayerInput::ProcessGamepad(const std::string &device, const unsigned char buttons[GAMEPAD_BUTTON_COUNT])
+{
+  // Only process buttons sent to our window
+  // TODO: Same fallback procedure as the one mentioned above
+  int window = !g_windowManager.HasModalDialog() ? g_windowManager.GetActiveWindow() : g_windowManager.GetTopMostModalDialogID();
+
+  CSingleLock lock(m_statesGuard);
+
+  for (unsigned int bid = 0; bid < GAMEPAD_BUTTON_COUNT; bid++)
+  {
+    // We only care if a change in state is detected
+    unsigned char bPressed = buttons[bid] & 0x80 ? 1 : 0;
+    if (bPressed == m_buttonState[bid])
+      continue;
+
+    // Don't record presses outside of fullscreen video, and always record unpresses
+    if (bPressed && (window & WINDOW_ID_MASK) != WINDOW_FULLSCREEN_VIDEO)
+      continue;
+
+    int        actionID;
+    CStdString actionName;
+    bool       fullrange; // unused
+    // Actual button ID is bid + 1
+    if (!CButtonTranslator::GetInstance().TranslateJoystickString(WINDOW_FULLSCREEN_VIDEO,
+        device.c_str(), bid + 1, JACTIVE_BUTTON, actionID, actionName, fullrange))
+      continue;
+
+    int id = TranslateActionID(actionID);
+    if (0 <= id && id < (int)(sizeof(m_joypadState) / sizeof(m_joypadState[0])))
+    {
+      // Record the new button state
+      m_joypadState[id] = bPressed;
+      CLog::Log(LOGDEBUG, "RetroPlayerInput: %s, action=%s, ID=%d",
+        bPressed ? "button press" : "button unpress", actionName.c_str(), actionID);
+    }
+    else
+    {
+      CLog::Log(LOGDEBUG, "RetroPlayerInput: Invalid %s, action=%s, ID=%d",
+        bPressed ? "button press" : "button unpress", actionName.c_str(), actionID);
+    }
   }
 }
 

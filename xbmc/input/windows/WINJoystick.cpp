@@ -19,6 +19,8 @@
 */
 
 #include "WINJoystick.h"
+#include "Application.h"
+#include "cores/RetroPlayer/RetroPlayer.h"
 #include "input/ButtonTranslator.h"
 #include "settings/AdvancedSettings.h"
 #include "utils/log.h"
@@ -273,6 +275,13 @@ void CJoystick::Update()
     // Get the input's device state
     if( FAILED( hr = pjoy->GetDeviceState( sizeof( DIJOYSTATE2 ), &js ) ) )
       return; // The device should have been acquired during the Poll()
+
+    if (g_application.m_pPlayer && g_application.GetCurrentPlayer() == EPC_RETROPLAYER)
+    {
+      CRetroPlayer* rp = dynamic_cast<CRetroPlayer*>(g_application.m_pPlayer);
+      if (rp)
+        rp->GetInput().ProcessGamepad(m_JoystickNames[j], js.rgbButtons);
+    }
 
     // get button states first, they take priority over axis
     for( int b = 0; b < 128; b++ )

@@ -27,6 +27,8 @@
 
 #include <stdint.h>
 
+#define GAMEPAD_BUTTON_COUNT 128
+
 class CRetroPlayerInput
 {
 public:
@@ -58,7 +60,7 @@ public:
    */
   void ProcessKeyUp(const CKey &key);
 
-  static CRetroPlayerInput *m_self;
+  void ProcessGamepad(const std::string &device, const unsigned char buttons[GAMEPAD_BUTTON_COUNT]);
 
 private:
   int TranslateActionID(int id) const;
@@ -66,6 +68,8 @@ private:
   // RETRO_DEVICE_ID_JOYPAD_R3 is the last key in libretro.h
   int16_t m_joypadState[ACTION_JOYPAD_CONTROL_END - ACTION_GAME_CONTROL_START + 1];
   bool    m_bActive;
+
+  unsigned char m_buttonState[GAMEPAD_BUTTON_COUNT];
 
   CCriticalSection m_statesGuard;
 };
