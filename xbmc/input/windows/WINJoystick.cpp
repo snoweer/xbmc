@@ -280,7 +280,7 @@ void CJoystick::Update()
     {
       CRetroPlayer* rp = dynamic_cast<CRetroPlayer*>(g_application.m_pPlayer);
       if (rp)
-        rp->GetInput().ProcessGamepad(m_JoystickNames[j], js.rgbButtons);
+        rp->GetInput().ProcessGamepad(m_JoystickNames[j], js.rgbButtons, numhat, js.rgdwPOV);
     }
 
     // get button states first, they take priority over axis

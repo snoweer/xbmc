@@ -33,6 +33,12 @@
 #include "SDLJoystick.h"
 #endif
 
+#define JOY_POV_360  JOY_POVBACKWARD * 2
+#define JOY_POV_NE   (JOY_POVFORWARD + JOY_POVRIGHT) / 2
+#define JOY_POV_SE   (JOY_POVRIGHT + JOY_POVBACKWARD) / 2
+#define JOY_POV_SW   (JOY_POVBACKWARD + JOY_POVLEFT) / 2
+#define JOY_POV_NW   (JOY_POVLEFT + JOY_POV_360) / 2
+
 
 CRetroPlayerInput::CRetroPlayerInput() : m_bActive(false)
 {
@@ -42,6 +48,7 @@ void CRetroPlayerInput::Begin()
 {
   memset(m_joypadState, 0, sizeof(m_joypadState));
   memset(m_buttonState, 0, sizeof(m_buttonState));
+  memset(m_hatState,    0, sizeof(m_hatState));
   m_bActive = true;
 }
 
@@ -116,7 +123,8 @@ void CRetroPlayerInput::ProcessKeyUp(const CKey &key)
   }
 }
 
-void CRetroPlayerInput::ProcessGamepad(const std::string &device, const unsigned char buttons[GAMEPAD_BUTTON_COUNT])
+void CRetroPlayerInput::ProcessGamepad(const std::string &device, const unsigned char buttons[GAMEPAD_BUTTON_COUNT],
+  int numHats, const unsigned long hats[4])
 {
   // Only process buttons sent to our window
   // TODO: Same fallback procedure as the one mentioned above
@@ -131,12 +139,12 @@ void CRetroPlayerInput::ProcessGamepad(const std::string &device, const unsigned
     if (bPressed == m_buttonState[bid])
       continue;
 
-    // Record the new state
-    m_buttonState[bid] = bPressed;
-
-    // Don't record presses outside of fullscreen video, and always record unpresses
+    // Don't record presses outside of fullscreen video (unpresses are ok)
     if (bPressed && (window & WINDOW_ID_MASK) != WINDOW_FULLSCREEN_VIDEO)
       continue;
+
+    // Record the new state
+    m_buttonState[bid] = bPressed;
 
     int        actionID;
     CStdString actionName;
@@ -149,7 +157,7 @@ void CRetroPlayerInput::ProcessGamepad(const std::string &device, const unsigned
     int id = TranslateActionID(actionID);
     if (0 <= id && id < (int)(sizeof(m_joypadState) / sizeof(m_joypadState[0])))
     {
-      // Record the new button state
+      // Record the new joypad state
       m_joypadState[id] = bPressed;
       CLog::Log(LOGDEBUG, "RetroPlayerInput: %s, action=%s, ID=%d",
         bPressed ? "button press" : "button unpress", actionName.c_str(), actionID);
@@ -158,6 +166,69 @@ void CRetroPlayerInput::ProcessGamepad(const std::string &device, const unsigned
     {
       CLog::Log(LOGDEBUG, "RetroPlayerInput: Invalid %s, action=%s, ID=%d",
         bPressed ? "button press" : "button unpress", actionName.c_str(), actionID);
+    }
+  }
+
+  // numHats is capped at 4 in WINJoystick.h, but just in case...
+  if (numHats < 0)
+    numHats = 0;
+  else if (numHats > 4)
+    numHats = 4;
+
+  for (unsigned int iHat = 0; iHat < numHats; iHat++)
+  {
+    // Unpack unsigned long hats[iHat] into a Hat struct
+    Hat hat;
+    bool bCentered = (hats[iHat] & 0xFFFF == 0xFFFF);
+    if (!bCentered)
+    {
+      if ((JOY_POV_NW <= hats[iHat] && hats[iHat] <= JOY_POV_360) || hats[iHat] <= JOY_POV_NE)
+        hat.up = 1;
+      if (JOY_POV_NE <= hats[iHat] && hats[iHat] <= JOY_POV_SE)
+        hat.right = 1;
+      if (JOY_POV_SE <= hats[iHat] && hats[iHat] <= JOY_POV_SW)
+        hat.down = 1;
+      if (JOY_POV_SW <= hats[iHat] && hats[iHat] <= JOY_POV_NW)
+        hat.left = 1;
+    }
+
+    // Using ordinal directions instead of cardinal directions lets us use a for loop
+    for (unsigned int i = 0; i < 4; i++)
+    {
+      // We only care if a change in state is detected
+      if (hat[i] == m_hatState[iHat][i])
+        continue;
+
+      // Don't record presses outside of fullscreen video (unpresses are ok)
+      if (hat[i] && (window & WINDOW_ID_MASK) != WINDOW_FULLSCREEN_VIDEO)
+        continue;
+
+      // Record the new state
+      m_hatState[iHat][i] = hat[i];
+
+      // Compose button ID (SDL_HAT_UP is (1 << 0), SDL_HAT_RIGHT is (1 << 1), etc.)
+      int        buttonID = (1 << i) << 16 | (iHat + 1); // Hat ID is iHat + 1
+      int        actionID;
+      CStdString actionName;
+      bool       fullrange; // unused
+      // Actual button ID is bid + 1
+      if (!CButtonTranslator::GetInstance().TranslateJoystickString(WINDOW_FULLSCREEN_VIDEO,
+          device.c_str(), buttonID, JACTIVE_HAT, actionID, actionName, fullrange))
+        continue;
+
+      int id = TranslateActionID(actionID);
+      if (0 <= id && id < (int)(sizeof(m_joypadState) / sizeof(m_joypadState[0])))
+      {
+        // Record the new joypad state
+        m_joypadState[id] = hat[i];
+        CLog::Log(LOGDEBUG, "RetroPlayerInput: %s, action=%s, ID=%d",
+          hat[i] ? "hat press" : "hat unpress", actionName.c_str(), actionID);
+      }
+      else
+      {
+        CLog::Log(LOGDEBUG, "RetroPlayerInput: Invalid %s, action=%s, ID=%d",
+          hat[i] ? "hat press" : "hat unpress", actionName.c_str(), actionID);
+      }
     }
   }
 }

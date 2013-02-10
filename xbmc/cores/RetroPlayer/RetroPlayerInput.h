@@ -27,7 +27,9 @@
 
 #include <stdint.h>
 
+// From dinput.h
 #define GAMEPAD_BUTTON_COUNT 128
+#define GAMEPAD_HAT_COUNT    4
 
 class CRetroPlayerInput
 {
@@ -60,16 +62,43 @@ public:
    */
   void ProcessKeyUp(const CKey &key);
 
-  void ProcessGamepad(const std::string &device, const unsigned char buttons[GAMEPAD_BUTTON_COUNT]);
+  void ProcessGamepad(const std::string &device, const unsigned char buttons[GAMEPAD_BUTTON_COUNT],
+    int numHats, const unsigned long hats[4]);
 
 private:
+  struct Hat
+  {
+    Hat() { Center(); }
+    void Center() { up = right = down = left = 0; }
+    bool IsCentered() { return *this == Hat(); }
+    bool operator==(const Hat &lhs) const { return up == lhs.up && right == lhs.right && down == lhs.down && left == lhs.left; }
+    bool operator!=(const Hat &lhs) const { return !(*this == lhs); }
+    unsigned char &operator[](unsigned int i)
+    {
+      switch (i)
+      {
+      case 0: return up;
+      case 1: return right;
+      case 2: return down;
+      case 3: return left;
+      default: return up;
+      }
+    }
+
+    unsigned char up;
+    unsigned char right;
+    unsigned char down;
+    unsigned char left;
+  };
+
   int TranslateActionID(int id) const;
 
-  // RETRO_DEVICE_ID_JOYPAD_R3 is the last key in libretro.h
-  int16_t m_joypadState[ACTION_JOYPAD_CONTROL_END - ACTION_GAME_CONTROL_START + 1];
-  bool    m_bActive;
+  bool m_bActive;
 
-  unsigned char m_buttonState[GAMEPAD_BUTTON_COUNT];
+  // RETRO_DEVICE_ID_JOYPAD_R3 is the last key in libretro.h
+  int16_t       m_joypadState[ACTION_JOYPAD_CONTROL_END - ACTION_GAME_CONTROL_START + 1];
+  unsigned char m_buttonState[GAMEPAD_BUTTON_COUNT]; 
+  Hat           m_hatState[GAMEPAD_HAT_COUNT];
 
   CCriticalSection m_statesGuard;
 };
