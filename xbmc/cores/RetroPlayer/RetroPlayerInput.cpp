@@ -131,6 +131,9 @@ void CRetroPlayerInput::ProcessGamepad(const std::string &device, const unsigned
     if (bPressed == m_buttonState[bid])
       continue;
 
+    // Record the new state
+    m_buttonState[bid] = bPressed;
+
     // Don't record presses outside of fullscreen video, and always record unpresses
     if (bPressed && (window & WINDOW_ID_MASK) != WINDOW_FULLSCREEN_VIDEO)
       continue;
