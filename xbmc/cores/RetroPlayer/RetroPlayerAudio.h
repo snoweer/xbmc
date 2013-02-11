@@ -26,6 +26,8 @@
 #include <stdint.h>
 #include <queue>
 
+class IAEStream;
+
 class CRetroPlayerAudio : public CThread
 {
 public:
@@ -49,6 +51,8 @@ public:
    */
   void SendAudioFrames(const int16_t *data, size_t frames);
 
+  double GetDelay();
+
 protected:
   virtual void Process();
 
@@ -58,4 +62,5 @@ private:
   CEvent             m_pauseEvent;
   CCriticalSection   m_critSection;
   int                m_samplerate;
+  IAEStream          *m_pAudioStream;
 };

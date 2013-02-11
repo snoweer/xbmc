@@ -209,10 +209,14 @@ void CRetroPlayer::Process()
     // Run the game client for the next frame
     m_gameClient->RunFrame();
 
-    // Avoid playing catchup if we go too slow for several frames (nextpts
-    // happens in the past)
+    // Slow down (increase nextpts) if we're playing catchup after stalling
     if (nextpts < CDVDClock::GetAbsoluteClock())
       nextpts = CDVDClock::GetAbsoluteClock();
+
+    // Slow down to 0.5x (an extra frame) if the audio is delayed by more than
+    // 0.4s (24 frames @ 60s)
+    if (m_audio.GetDelay() > 0.4)
+      nextpts += frametime * PLAYSPEED_NORMAL / m_playSpeed;
 
     CDVDClock::WaitAbsoluteClock(nextpts);
     nextpts += frametime * PLAYSPEED_NORMAL / m_playSpeed;

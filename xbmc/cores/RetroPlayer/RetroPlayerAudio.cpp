@@ -29,7 +29,8 @@
 
 CRetroPlayerAudio::CRetroPlayerAudio()
   : CThread("RetroPlayerAudio"),
-    m_samplerate(0)
+    m_samplerate(0),
+    m_pAudioStream(NULL)
 {
 }
 
@@ -48,10 +49,9 @@ void CRetroPlayerAudio::Process()
 {
   CLog::Log(LOGINFO, "RetroPlayerAudio: Creating audio stream, sample rate = %d", m_samplerate);
   static enum AEChannel map[3] = {AE_CH_FL, AE_CH_FR, AE_CH_NULL};
-  IAEStream *audioStream = CAEFactory::MakeStream(AE_FMT_S16NE, m_samplerate, m_samplerate,
-      CAEChannelInfo(map), AESTREAM_AUTOSTART);
+  m_pAudioStream = CAEFactory::MakeStream(AE_FMT_S16NE, m_samplerate, m_samplerate, CAEChannelInfo(map), AESTREAM_AUTOSTART);
 
-  if (!audioStream)
+  if (!m_pAudioStream)
   {
     CLog::Log(LOGERROR, "RetroPlayerAudio: Failed to create audio stream");
     return;
@@ -87,9 +87,8 @@ void CRetroPlayerAudio::Process()
 
     // Calculate a timeout when this definitely should be done
     double timeout;
-    timeout  = DVD_SEC_TO_TIME(audioStream->GetDelay() + packet.size * secondsPerByte);
-    //timeout += DVD_SEC_TO_TIME(1.0);
-    timeout += DVD_SEC_TO_TIME(0.01);
+    timeout  = DVD_SEC_TO_TIME(m_pAudioStream->GetDelay() + packet.size * secondsPerByte);
+    timeout += DVD_SEC_TO_TIME(1.0);
     timeout += CDVDClock::GetAbsoluteClock();
 
     // Keep track of how much data has been added to the stream
@@ -97,8 +96,7 @@ void CRetroPlayerAudio::Process()
     do
     {
       // Fast-forward packet data on successful add
-      copied = audioStream->AddData(packet.data, packet.size);
-      double delay = audioStream->GetDelay();
+      copied = m_pAudioStream->AddData(packet.data, packet.size);
       packet.data += copied;
       packet.size -= copied;
 
@@ -124,8 +122,14 @@ void CRetroPlayerAudio::Process()
     data = NULL;
   }
 
-  if (audioStream)
-    CAEFactory::FreeStream(audioStream);
+  m_bStop = true;
+  CAEFactory::FreeStream(m_pAudioStream);
+  m_pAudioStream = NULL;
+}
+
+double CRetroPlayerAudio::GetDelay()
+{
+  return m_pAudioStream && !m_bStop ? m_pAudioStream->GetDelay() : 0.0;
 }
 
 void CRetroPlayerAudio::SendAudioFrames(const int16_t *data, size_t frames)
