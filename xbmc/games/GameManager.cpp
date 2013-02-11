@@ -58,11 +58,12 @@ static const PortMapping ports[] =
   {SYSTEM_SuperNintendo,  2}
 };
 
+CGameManager CGameManager::m_gameManagerInstance;
+
 /* static */
 CGameManager &CGameManager::Get()
 {
-  static CGameManager gameManagerInstance;
-  return gameManagerInstance;
+  return m_gameManagerInstance;
 }
 
 void CGameManager::RegisterAddons(const VECADDONS &addons)
@@ -127,8 +128,9 @@ void CGameManager::UnregisterAddon(const CStdString &ID)
   CLog::Log(LOGERROR, "CGameManager: can't unregister %s - not registered!", ID.c_str());
 }
 
-GameClientPtr CGameManager::GetGameClient(const CStdString &strFile)
+GameClientPtr CGameManager::GetGameClient(const CFileItem& file)
 {
+  CStdString strFile = file.GetPath();
   CStdString strExtension;
   URIUtils::GetExtension(strFile, strExtension);
   strExtension.ToLower();

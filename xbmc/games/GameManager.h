@@ -59,14 +59,14 @@ public:
   void UnregisterAddon(const CStdString &ID);
 
   /*!
-   * Resolve a file path to a game client add-on. The extension is used to
+   * Resolve a file path to a game client add-on. The file extension is used to
    * screen for compatible game clients. If a game client specifies no
    * extensions, but its system matches the system belonging to the file's
    * extension, then it is added as a possible game client.
    *
    * Currently, this returns only the first match. TODO: hand off an array
    */
-  ADDON::GameClientPtr GetGameClient(const CStdString &strFile);
+  ADDON::GameClientPtr GetGameClient(const CFileItem& file);
 
   /*!
    * Resolve a file name to a system type enum by the file's extension.
@@ -92,6 +92,8 @@ private:
   static bool ContainsExtesion(const CStdString &strExtensionList, const CStdString &strExt);
 
 private:
+  static CGameManager m_gameManagerInstance;
+
   // Pertinent information captured by the game client add-on. We use these
   // objects as a cache to avoid loading the DLL every time.
   struct GameClientObject
