@@ -42,8 +42,8 @@ public:
 
   virtual bool OnAction(const CAction &action)
   {
-    // No need to forward ACTION_GAME_CONTROL_* to m_input,
-    // CApplication::OnEvent() takes care of that
+    // No need to forward ACTION_GAME_CONTROL_* to m_input, these are
+    // intercepted elsewhere
     return false;
   }
 
@@ -114,14 +114,18 @@ protected:
   virtual void OnExit();
 
 private:
+  // Static functions used to send and receive data from the game clients
   static void    OnVideoFrame(const void *data, unsigned width, unsigned height, size_t pitch);
   static void    OnAudioSample(int16_t left, int16_t right);
   static size_t  OnAudioSampleBatch(const int16_t *data, size_t frames);
   static int16_t OnInputState(unsigned port, unsigned device, unsigned index, unsigned id);
   static void    OnSetPixelFormat(retro_pixel_format pixelFormat); // retro_pixel_format defined in libretro.h
+  static void    OnSetKeyboardCallback(retro_keyboard_event_t callback); // retro_keyboard_event_t defined in libretro.h
 
-  static CRetroPlayer *m_retroPlayer; // So that static methods may invoke audio, video and input callbacks
+  // So that the static functions above may invoke audio, video and input callbacks
+  static CRetroPlayer *m_retroPlayer;
   static ADDON::CGameClient::DataReceiver m_callbacks;
+  static retro_keyboard_event_t m_keyboardCallback; // unused
 
   CRetroPlayerVideo    m_video;
   CRetroPlayerAudio    m_audio;

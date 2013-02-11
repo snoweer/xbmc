@@ -22,6 +22,7 @@
 
 #include "GameClient.h"
 #include "addons/AddonManager.h"
+#include "Application.h"
 #include "filesystem/File.h"
 #include "URL.h"
 #include "utils/log.h"
@@ -33,7 +34,8 @@
 
 using namespace ADDON;
 
-CGameClient::DataReceiver::SetPixelFormat_t CGameClient::SetPixelFormat = NULL;
+CGameClient::DataReceiver::SetPixelFormat_t       CGameClient::_SetPixelFormat      = NULL;
+CGameClient::DataReceiver::SetKeyboardCallback_t  CGameClient::_SetKeyboardCallback = NULL;
 
 CGameClient::CGameClient(const AddonProps &props) : CAddon(props)
 {
@@ -91,7 +93,7 @@ bool CGameClient::Init()
     return false;
   }
 
-  struct retro_system_info info;
+  retro_system_info info = {};
   m_dll.retro_get_system_info(&info);
   m_clientName      = info.library_name ? info.library_name : "Unknown";
   m_clientVersion   = info.library_version ? info.library_version : "v0.0";
@@ -180,8 +182,13 @@ bool CGameClient::OpenFile(const CFileItem& file, const DataReceiver &callbacks)
   if (!CanOpen(file.GetPath()))
       return false;
   
-  // Install the pixel format hook. This is called by EnvironmentCallback().
-  SetPixelFormat = callbacks.SetPixelFormat;
+  // Ensure the default values
+  callbacks.SetPixelFormat(RETRO_PIXEL_FORMAT_0RGB1555);
+  callbacks.SetKeyboardCallback(NULL);
+
+  // Install the hooks. These are called by EnvironmentCallback().
+  _SetPixelFormat      = callbacks.SetPixelFormat;
+  _SetKeyboardCallback = callbacks.SetKeyboardCallback;
 
   // Because we call m_dll.retro_init() here instead of in Init(), keep track
   // of this. Note that if we return false later, m_bIsInited will still be
@@ -236,7 +243,7 @@ bool CGameClient::OpenFile(const CFileItem& file, const DataReceiver &callbacks)
   }
 
   // This is the structure we fill with info about the file we are loading
-  struct retro_game_info info;
+  retro_game_info info;
   info.path = path; // String or NULL if using info.data
   info.data = data; // Pointer to full file loaded into memory
   info.size = (size_t)length; // Size of info.data
@@ -273,8 +280,7 @@ bool CGameClient::OpenFile(const CFileItem& file, const DataReceiver &callbacks)
 
   // Get information about system audio/video timings and geometry
   // Can be called only after retro_load_game()
-  struct retro_system_av_info av_info;
-  memset(&av_info, 0, sizeof(av_info));
+  retro_system_av_info av_info = {};
   m_dll.retro_get_system_av_info(&av_info);
 
   unsigned int baseWidth  = av_info.geometry.base_width; // 256
@@ -443,8 +449,8 @@ void CGameClient::Reset()
 
 bool CGameClient::EnvironmentCallback(unsigned int cmd, void *data)
 {
-  // Note: RETRO_ENVIRONMENT_SHUTDOWN doesn't use data and the other uses data as a return path
-  if (!data && cmd != RETRO_ENVIRONMENT_SHUTDOWN && cmd != RETRO_ENVIRONMENT_GET_SYSTEM_DIRECTORY)
+  // Note: SHUTDOWN doesn't use data and GET_SYSTEM_DIRECTORY uses data as a return path
+  if (!(cmd == RETRO_ENVIRONMENT_SHUTDOWN || cmd == RETRO_ENVIRONMENT_GET_SYSTEM_DIRECTORY) && !data)
   {
     CLog::Log(LOGERROR, "GameClient environment query ID=%d: no data! naughty core?", cmd);
     return false;
@@ -463,7 +469,7 @@ bool CGameClient::EnvironmentCallback(unsigned int cmd, void *data)
   case RETRO_ENVIRONMENT_GET_CAN_DUPE:
     {
       // Boolean value whether or not we support frame duping, passing NULL to video frame callback
-      *(bool*)data = true;
+      *reinterpret_cast<bool*>(data) = true;
       CLog::Log(LOGINFO, "GameClient environment query ID=%d: frame duping is %s",
           RETRO_ENVIRONMENT_GET_CAN_DUPE, *reinterpret_cast<bool*>(data) ? "enabled" : "disabled");
       break;
@@ -473,28 +479,29 @@ bool CGameClient::EnvironmentCallback(unsigned int cmd, void *data)
       // Interface to acquire user-defined information from environment that cannot feasibly be
       // supported in a multi-system way. Mostly used for obscure, specific features that the
       // user can tap into when necessary.
-      struct retro_variable *var = reinterpret_cast<struct retro_variable*>(data);
-      if (var->key)
+      retro_variable *var = reinterpret_cast<retro_variable*>(data);
+      if (var->key && var->value)
       {
         // For example...
-        if (var->key && strncmp("too_sexy_for", var->key, 12))
+        if (strncmp("too_sexy_for", var->key, 12) == 0)
         {
-          var->value = "shirt";
+          var->value = "my_shirt";
           CLog::Log(LOGINFO, "GameClient environment query ID=%d: variable %s set to %s",
               RETRO_ENVIRONMENT_GET_VARIABLE, var->key, var->value);
         }
         else
         {
+          var->value = NULL;
           CLog::Log(LOGERROR, "GameClient environment query ID=%d: undefined variable %s",
               RETRO_ENVIRONMENT_GET_VARIABLE, var->key);
-          var->value = NULL;
         }
       }
       else
       {
+        if (var->value)
+          var->value = NULL;
         CLog::Log(LOGERROR, "GameClient environment query ID=%d: no variable given",
             RETRO_ENVIRONMENT_GET_VARIABLE);
-        var->value = NULL;
       }
       break;
     }
@@ -504,7 +511,7 @@ bool CGameClient::EnvironmentCallback(unsigned int cmd, void *data)
       // for later using GET_VARIABLE. 'data' points to an array of retro_variable structs terminated
       // by a { NULL, NULL } element. retro_variable::value should contain a human readable description
       // of the key.
-      const struct retro_variable *vars = reinterpret_cast<const struct retro_variable*>(data);
+      const retro_variable *vars = reinterpret_cast<const retro_variable*>(data);
       if (!vars->key)
       {
         CLog::Log(LOGERROR, "GameClient environment query ID=%d: no variables given",
@@ -512,7 +519,7 @@ bool CGameClient::EnvironmentCallback(unsigned int cmd, void *data)
       }
       else
       {
-        while (vars->key)
+        while (vars && vars->key)
         {
           if (vars->value)
             CLog::Log(LOGINFO, "GameClient environment query ID=%d: notified of var %s (%s)",
@@ -528,9 +535,10 @@ bool CGameClient::EnvironmentCallback(unsigned int cmd, void *data)
   case RETRO_ENVIRONMENT_SET_MESSAGE:
     {
       // Sets a message to be displayed. Generally not for trivial messages.
-      const struct retro_message *msg = reinterpret_cast<const struct retro_message*>(data);
-      CLog::Log(LOGINFO, "GameClient environment query ID=%d: display msg \"%s\" for %d frames",
-          RETRO_ENVIRONMENT_SET_MESSAGE, msg->msg, msg->frames);
+      const retro_message *msg = reinterpret_cast<const retro_message*>(data);
+      if (msg->msg && msg->frames)
+        CLog::Log(LOGINFO, "GameClient environment query ID=%d: display msg \"%s\" for %d frames",
+            RETRO_ENVIRONMENT_SET_MESSAGE, msg->msg, msg->frames);
       break;
     }
   case RETRO_ENVIRONMENT_SET_ROTATION:
@@ -550,6 +558,10 @@ bool CGameClient::EnvironmentCallback(unsigned int cmd, void *data)
     // Game has been shut down. Should only be used if game has a specific way to shutdown
     // the game from a menu item or similar.
     CLog::Log(LOGINFO, "GameClient environment query ID=%d: game signaled shutdown event", RETRO_ENVIRONMENT_SHUTDOWN);
+
+    if (g_application.m_pPlayer && g_application.GetCurrentPlayer() == EPC_RETROPLAYER)
+      g_application.StopPlaying();
+
     break;
   case RETRO_ENVIRONMENT_SET_PERFORMANCE_LEVEL:
     {
@@ -595,12 +607,54 @@ bool CGameClient::EnvironmentCallback(unsigned int cmd, void *data)
       case RETRO_PIXEL_FORMAT_0RGB1555: // 5 bit color, high bit must be zero
       case RETRO_PIXEL_FORMAT_XRGB8888: // 8 bit color, high byte is ignored
       case RETRO_PIXEL_FORMAT_RGB565:   // 5/6/5 bit color
-        SetPixelFormat(pix_fmt);
+        CLog::Log(LOGINFO, "GameClient environment query ID=%d: set pixel format: %d",
+            RETRO_ENVIRONMENT_SET_PERFORMANCE_LEVEL, pix_fmt);
+        _SetPixelFormat(pix_fmt);
         break;
       default:
         CLog::Log(LOGERROR, "GameClient environment query ID=%d: invalid pixel format: %d",
             RETRO_ENVIRONMENT_SET_PERFORMANCE_LEVEL, pix_fmt);
         return false;
+      }
+      break;
+    }
+  case RETRO_ENVIRONMENT_SET_INPUT_DESCRIPTORS:
+    {
+      // Describes the internal input bind through a human-readable string.
+      // This string can be used to better let a user configure input. The array
+      // is terminated by retro_input_descriptor::description being set to NULL.
+      const retro_input_descriptor *descriptor = reinterpret_cast<const retro_input_descriptor*>(data);
+
+      if (!descriptor->description)
+      {
+        CLog::Log(LOGERROR, "GameClient environment query ID=%d: no descriptors given",
+            RETRO_ENVIRONMENT_SET_VARIABLES);
+      }
+      else
+      {
+        while (descriptor && descriptor->description)
+        {
+          CLog::Log(LOGINFO, "GameClient environment query ID=%d: notified of input %s (port=%d, device=%d, index=%d, id=%d)",
+            RETRO_ENVIRONMENT_SET_VARIABLES, descriptor->description,
+              descriptor->port, descriptor->device, descriptor->index, descriptor->id);
+          descriptor++;
+        }
+      }
+      break;
+    }
+  case RETRO_ENVIRONMENT_SET_KEYBOARD_CALLBACK:
+    {
+      // Sets a callback function, called by XBMC, used to notify core about
+      // keyboard events.
+      // down is set if the key is being pressed, or false if it is being released.
+      // keycode is the RETROK value of the char.
+      // character is the text character of the pressed key. (UTF-32).
+      // key_modifiers is a set of RETROKMOD values or'ed together.
+      const retro_keyboard_callback *callback_struct = reinterpret_cast<const retro_keyboard_callback*>(data);
+      if (callback_struct->callback)
+      {
+        CLog::Log(LOGINFO, "GameClient environment query ID=%d: set keyboard callback");
+        _SetKeyboardCallback(callback_struct->callback);
       }
       break;
     }

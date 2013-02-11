@@ -43,7 +43,10 @@ CGameClient::DataReceiver CRetroPlayer::m_callbacks(OnVideoFrame,
                                                     OnAudioSample,
                                                     OnAudioSampleBatch,
                                                     OnInputState,
-                                                    OnSetPixelFormat);
+                                                    OnSetPixelFormat,
+                                                    OnSetKeyboardCallback);
+
+retro_keyboard_event_t CRetroPlayer::m_keyboardCallback = NULL;
 
 CRetroPlayer::CRetroPlayer(IPlayerCallback& callback) :
     IPlayer(callback), CThread("RetroPlayer"),
@@ -274,6 +277,12 @@ int16_t CRetroPlayer::OnInputState(unsigned port, unsigned device, unsigned inde
 void CRetroPlayer::OnSetPixelFormat(retro_pixel_format pixelFormat)
 {
   m_retroPlayer->m_video.SetPixelFormat(pixelFormat);
+}
+
+/* static */
+void CRetroPlayer::OnSetKeyboardCallback(retro_keyboard_event_t callback)
+{
+  m_keyboardCallback = callback;
 }
 
 void CRetroPlayer::Pause()

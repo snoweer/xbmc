@@ -47,21 +47,23 @@ namespace ADDON
      */
     struct DataReceiver
     {
-      typedef void    (*VideoFrame_t)      (const void *data, unsigned width, unsigned height, size_t pitch);
-      typedef void    (*AudioSample_t)     (int16_t left, int16_t right);
-      typedef size_t  (*AudioSampleBatch_t)(const int16_t *data, size_t frames);
+      typedef void    (*VideoFrame_t)          (const void *data, unsigned width, unsigned height, size_t pitch);
+      typedef void    (*AudioSample_t)         (int16_t left, int16_t right);
+      typedef size_t  (*AudioSampleBatch_t)    (const int16_t *data, size_t frames);
       // Actually a "data sender", but who's looking
-      typedef int16_t (*GetInputState_t)   (unsigned port, unsigned device, unsigned index, unsigned id);
-      typedef void    (*SetPixelFormat_t)  (retro_pixel_format format); // retro_pixel_format defined in libretro.h
+      typedef int16_t (*GetInputState_t)       (unsigned port, unsigned device, unsigned index, unsigned id);
+      typedef void    (*SetPixelFormat_t)      (retro_pixel_format format); // retro_pixel_format defined in libretro.h
+      typedef void    (*SetKeyboardCallback_t) (retro_keyboard_event_t callback); // retro_keyboard_event_t defined in libretro.h
 
-      VideoFrame_t       VideoFrame;
-      AudioSample_t      AudioSample;
-      AudioSampleBatch_t AudioSampleBatch;
-      GetInputState_t    GetInputState;
-      SetPixelFormat_t   SetPixelFormat;
+      VideoFrame_t          VideoFrame;
+      AudioSample_t         AudioSample;
+      AudioSampleBatch_t    AudioSampleBatch;
+      GetInputState_t       GetInputState;
+      SetPixelFormat_t      SetPixelFormat;
+      SetKeyboardCallback_t SetKeyboardCallback;
 
-      DataReceiver(VideoFrame_t vf, AudioSample_t as, AudioSampleBatch_t asb, GetInputState_t is, SetPixelFormat_t spf)
-        : VideoFrame(vf), AudioSample(as), AudioSampleBatch(asb), GetInputState(is), SetPixelFormat(spf) { }
+      DataReceiver(VideoFrame_t vf, AudioSample_t as, AudioSampleBatch_t asb, GetInputState_t is, SetPixelFormat_t spf, SetKeyboardCallback_t skc)
+        : VideoFrame(vf), AudioSample(as), AudioSampleBatch(asb), GetInputState(is), SetPixelFormat(spf), SetKeyboardCallback(skc) { }
     };
 
     CGameClient(const AddonProps &props);
@@ -173,7 +175,8 @@ namespace ADDON
     void Initialize();
 
     static bool EnvironmentCallback(unsigned cmd, void *data);
-    static DataReceiver::SetPixelFormat_t SetPixelFormat; // called by EnvironmentCallback()
+    static DataReceiver::SetPixelFormat_t _SetPixelFormat; // called by EnvironmentCallback()
+    static DataReceiver::SetKeyboardCallback_t _SetKeyboardCallback; // called by EnvironmentCallback()
 
     GameClientDLL m_dll;
     CStdStringArray m_systems;
