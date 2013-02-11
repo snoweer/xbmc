@@ -114,7 +114,7 @@ bool CGameClient::Init()
   CLog::Log(LOGERROR, "GameClient: Loaded DLL for %s", ID().c_str());
   CLog::Log(LOGERROR, "GameClient: Client: %s at version %s", m_clientName.c_str(), m_clientVersion.c_str());
   CLog::Log(LOGERROR, "GameClient: Valid extensions: %s", m_validExtensions.c_str());
-  CLog::Log(LOGERROR, "GameClient: Allow VFS: %s, require zip: %s", m_bAllowVFS ? "yes" : "no", m_bRequireZip ? "yes" : "no");
+  CLog::Log(LOGERROR, "GameClient: Allow VFS: %s, require zip (block extract): %s", m_bAllowVFS ? "yes" : "no", m_bRequireZip ? "yes" : "no");
   CLog::Log(LOGERROR, "GameClient: ------------------------------------");
 
   return true;
@@ -203,7 +203,7 @@ bool CGameClient::OpenFile(const CFileItem& file, const DataReceiver &callbacks)
   }
 
   const char * path = NULL;
-  void *       data = NULL;
+  uint8_t *    data = NULL;
   uint64_t     length = 0;
 
   // Use the vfs if it's allowed
@@ -224,12 +224,12 @@ bool CGameClient::OpenFile(const CFileItem& file, const DataReceiver &callbacks)
       if (length >= std::numeric_limits<size_t>::max())
         return false;
 
-      data = new char[(size_t)length];
+      data = new uint8_t[(size_t)length];
       if (data)
       {
         if (length != vfsFile.Read(data, length))
         {
-          delete[] (char*)data;
+          delete[] data;
           return false;
         }
       }
@@ -264,7 +264,7 @@ bool CGameClient::OpenFile(const CFileItem& file, const DataReceiver &callbacks)
     ret = m_dll.retro_load_game_special(romType, &info, 1);
   }
 
-  delete[] (char*)data;
+  delete[] data;
 
   // If ret is 0, we failed to load the game
   if (!ret)
@@ -312,7 +312,7 @@ bool CGameClient::OpenFile(const CFileItem& file, const DataReceiver &callbacks)
   if (state_size)
   {
      m_rewindSupported = true;
-     m_rewindMaxFrames = 60.0 * m_frameRate; // Allow up to rougly 30 seconds worth of rewind.
+     m_rewindMaxFrames = 60.0 * m_frameRate; // Allow up to rougly 60 seconds worth of rewind.
      m_serializeSize = state_size;
      m_lastSaveState.resize((state_size + sizeof(uint32_t) - 1) / sizeof(uint32_t));
      m_dll.retro_serialize(reinterpret_cast<uint8_t*>(m_lastSaveState.data()), m_serializeSize);
