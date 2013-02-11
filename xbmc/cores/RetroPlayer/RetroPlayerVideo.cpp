@@ -61,7 +61,7 @@ void CRetroPlayerVideo::StopThread()
 
 void CRetroPlayerVideo::Process()
 {
-  Frame frame;
+  Frame frame = {};
   DVDVideoPicture *pPicture = NULL;
 
   if (!m_dllSwScale.Load())

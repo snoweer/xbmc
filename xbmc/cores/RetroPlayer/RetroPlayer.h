@@ -136,8 +136,8 @@ private:
 
   CCriticalSection m_critSection;
 
-  CFileItem m_file;
+  CFileItem      m_file;
   CPlayerOptions m_PlayerOptions;
-  bool m_bAbortRequest;
-  int  m_playSpeed; // Normal play speed is PLAYSPEED_NORMAL (1000)
+  volatile bool  m_bAbortRequest;
+           int   m_playSpeed; // Normal play speed is PLAYSPEED_NORMAL (1000)
 };

@@ -29,8 +29,7 @@
 
 CRetroPlayerAudio::CRetroPlayerAudio()
   : CThread("RetroPlayerAudio"),
-    m_samplerate(0),
-    m_bPaused(false)
+    m_samplerate(0)
 {
 }
 
@@ -58,70 +57,71 @@ void CRetroPlayerAudio::Process()
     return;
   }
 
-  Packet packet;
+  Packet packet = {};
+  // So we can clean up later
+  unsigned char* data = NULL;
 
   while (!m_bStop)
   {
-    /*
-    if (m_bPaused)
     {
-      audioStream->Pause();
-      m_pauseEvent.Wait();
-      if (m_bStop)
-        break;
-      audioStream->Resume();
-    }
-    */
-
-    { // Enter critical section
       CSingleLock lock(m_critSection);
-      if (!m_packets.size())
+
+      if (m_packets.empty())
       {
         lock.Leave();
         m_packetReady.WaitMSec(17); // ~1 video frame @ 60fps
         // If event timed out, we might be done, so check m_bStop again
         continue;
       }
+
       packet = m_packets.front();
       m_packets.pop();
-    } // End critical section
+    }
 
-    unsigned char* data = reinterpret_cast<unsigned char*>(const_cast<int16_t*>(packet.data));
-    DWORD frameSize = 2 * sizeof(uint16_t); // L (2) + R (2)
-    DWORD size = packet.frames * frameSize;
-    double secondsPerByte = 1.0 / (m_samplerate * frameSize);
+    // So we can clean up later
+    data = packet.data;
+
+    // Calculate some inherent properties of the sound data
+    const DWORD  frameSize      = 2 * sizeof(uint16_t); // L (2) + R (2)
+    const double secondsPerByte = 1.0 / (m_samplerate * frameSize);
 
     // Calculate a timeout when this definitely should be done
     double timeout;
-    timeout  = DVD_SEC_TO_TIME(audioStream->GetDelay() + size * secondsPerByte);
-    timeout += DVD_SEC_TO_TIME(1.0);
+    timeout  = DVD_SEC_TO_TIME(audioStream->GetDelay() + packet.size * secondsPerByte);
+    //timeout += DVD_SEC_TO_TIME(1.0);
+    timeout += DVD_SEC_TO_TIME(0.01);
     timeout += CDVDClock::GetAbsoluteClock();
 
-    DWORD  copied;
+    // Keep track of how much data has been added to the stream
+    DWORD copied;
     do
     {
-      copied = audioStream->AddData(data, size);
-      data += copied;
-      size -= copied;
+      // Fast-forward packet data on successful add
+      copied = audioStream->AddData(packet.data, packet.size);
+      double delay = audioStream->GetDelay();
+      packet.data += copied;
+      packet.size -= copied;
 
-      if (size < frameSize)
+      // Test for incomplete frames remaining
+      if (packet.size < frameSize)
         break;
 
       if (copied == 0 && timeout < CDVDClock::GetAbsoluteClock())
       {
-        CLog::Log(LOGERROR, "RetroPlayerAudio: Timeout adding data to renderer");
+        CLog::Log(LOGERROR, "RetroPlayerAudio: Timeout adding data to audio renderer");
         break;
       }
 
       Sleep(1);
     } while (!m_bStop);
 
-    // if we have more data left, save it for the next call to this function
-    if (size > 0 && !m_bStop)
-      CLog::Log(LOGNOTICE, "RetroPlayerAudio: %d bytes left over after rendering, discarding", size);
+    // Discard extra data
+    if (packet.size > 0 && !m_bStop)
+      CLog::Log(LOGNOTICE, "RetroPlayerAudio: %d bytes left over after rendering, discarding", packet.size);
 
     // Clean up the data allocated in CRetroPlayer::OnAudioSampleBatch()
-    delete[] packet.data;
+    delete[] data;
+    data = NULL;
   }
 
   if (audioStream)
@@ -130,15 +130,19 @@ void CRetroPlayerAudio::Process()
 
 void CRetroPlayerAudio::SendAudioFrames(const int16_t *data, size_t frames)
 {
-  if (IsRunning())
+  CSingleLock lock(m_critSection);
+
+  if (!m_bStop && IsRunning())
   {
-    CSingleLock lock(m_critSection);
-    m_packets.push(Packet(data, frames));
-    m_packetReady.Set();
-  }
-  else
-  {
-    // Packets were discarded, so make sure we clean up after CRetroPlayer::OnAudioSampleBatch()
-    delete[] data;
-  }
+    Packet packet;
+    packet.size = frames * 2 * sizeof(int16_t);
+    packet.data = new unsigned char[packet.size];
+
+    if (packet.data)
+    {
+      memcpy(packet.data, data, packet.size);
+      m_packets.push(packet);
+      m_packetReady.Set();
+    }
+  } 
 }

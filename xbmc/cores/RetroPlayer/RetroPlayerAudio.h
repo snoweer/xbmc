@@ -29,22 +29,14 @@
 class CRetroPlayerAudio : public CThread
 {
 public:
-  CRetroPlayerAudio();
-  ~CRetroPlayerAudio();
-
   struct Packet
   {
-    const int16_t *data;
-    size_t         frames;
-    Packet() { data = NULL; frames = 0; }
-    Packet(const int16_t *data, size_t frames) : data(data), frames(frames) { }
-    Packet(const Packet &frame) { *this = frame; }
-    Packet &operator=(const Packet &packet)
-    {
-      if (this != &packet) { data = packet.data; frames = packet.frames; }
-      return *this;
-    }
+    unsigned char * data;
+    size_t          size; // Frame count * 2 (L+R) * sizeof(int16_t)
   };
+
+  CRetroPlayerAudio();
+  ~CRetroPlayerAudio();
 
   /**
    * Rev up the engines and start the thread.
@@ -57,14 +49,8 @@ public:
    */
   void SendAudioFrames(const int16_t *data, size_t frames);
 
-  void Tickle() { m_packetReady.Set(); }
-
-  void Pause() { m_bPaused = true; }
-  void UnPause() { m_bPaused = false; m_pauseEvent.Set(); }
-
 protected:
   virtual void Process();
-  //virtual void OnExit();
 
 private:
   std::queue<Packet> m_packets;
@@ -72,5 +58,4 @@ private:
   CEvent             m_pauseEvent;
   CCriticalSection   m_critSection;
   int                m_samplerate;
-  bool               m_bPaused;
 };

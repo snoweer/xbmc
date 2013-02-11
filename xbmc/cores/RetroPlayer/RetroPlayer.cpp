@@ -165,7 +165,7 @@ void CRetroPlayer::Process()
   }
 
   // Start the audio thread
-  double samplerate = m_gameClient->GetSampleRate();
+  const double samplerate = m_gameClient->GetSampleRate();
   // TODO: min/max sample rate?
   if (samplerate < 1 || samplerate > 384000)
   {
@@ -175,11 +175,11 @@ void CRetroPlayer::Process()
   else
   {
     // Adjust video clock to give us an integer sample rate
-    int newSamplerate = (int)samplerate;
+    const int newSamplerate = (int)samplerate;
 
     if (newSamplerate != samplerate)
     {
-      double oldFramerate = framerate;
+      const double oldFramerate = framerate;
       framerate *= newSamplerate / samplerate;
 
       CLog::Log(LOGDEBUG, "RetroPlayer: Frame rate changed from %f to %f", oldFramerate, framerate);
@@ -199,19 +199,20 @@ void CRetroPlayer::Process()
   {
     if (m_playSpeed <= PLAYSPEED_PAUSED)
     {
-      // No need to pause video, the absence of frames will pause it
-      m_audio.Pause();
+      // No need to pause audio or video, the absence of frames will pause it
       m_pauseEvent.Wait();
       // Reset the clock
       nextpts = CDVDClock::GetAbsoluteClock() + frametime;
-      m_audio.UnPause();
       continue;
     }
 
     // Run the game client for the next frame
     m_gameClient->RunFrame();
 
-    // Audio tickling occurs in CRetroPlayerAudio::SendAudioFrames()
+    // Avoid playing catchup if we go too slow for several frames (nextpts
+    // happens in the past)
+    if (nextpts < CDVDClock::GetAbsoluteClock())
+      nextpts = CDVDClock::GetAbsoluteClock();
 
     CDVDClock::WaitAbsoluteClock(nextpts);
     nextpts += frametime * PLAYSPEED_NORMAL / m_playSpeed;
@@ -242,14 +243,7 @@ void CRetroPlayer::OnAudioSample(int16_t left, int16_t right)
 size_t CRetroPlayer::OnAudioSampleBatch(const int16_t *data, size_t frames)
 {
   if (data && frames && m_retroPlayer->m_playSpeed == PLAYSPEED_NORMAL)
-  {
-    int16_t *copy = new int16_t[frames * 2];
-    if (copy)
-    {
-      memcpy(copy, data, frames * 2 * sizeof(int16_t));
-      m_retroPlayer->m_audio.SendAudioFrames(copy, frames);
-    }
-  }
+    m_retroPlayer->m_audio.SendAudioFrames(data, frames);
   return frames;
 }
 
