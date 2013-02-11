@@ -53,47 +53,57 @@ public:
   int16_t GetInput(unsigned port, unsigned device, unsigned index, unsigned id);
 
   /**
-   * Marks a key as pressed.
+   * Marks a key as pressed. This intercepts keys sent to CApplication::OnKey()
+   * before they are translated into actions.
    */
   void ProcessKeyDown(const CKey &key);
 
   /**
-   * Marks a key as released.
+   * Marks a key as released. Because key releases aren't processed by
+   * CApplication and aren't translated into actions, these are intercepted
+   * at the raw event stage in CApplication::OnEvent().
    */
   void ProcessKeyUp(const CKey &key);
 
+  /**
+   * Monitor gamepads for input changes. This is called by g_Joystick.Update()
+   * on every frame, once per gamepad device. Currently, gamepad axes are
+   * ignored.
+   */
   void ProcessGamepad(const std::string &device, const unsigned char buttons[GAMEPAD_BUTTON_COUNT],
-    int numHats, const unsigned long hats[4]);
+    int numHats, const unsigned long hats[GAMEPAD_HAT_COUNT]);
 
 private:
+  /**
+   * An arrow-based device on a gamepad. Legally, no more than two buttons can
+   * be pressed, and only if they are adjacent. If no buttons are pressed, the
+   * hat is centered.
+   */
   struct Hat
   {
-    Hat() { Center(); }
-    void Center() { up = right = down = left = 0; }
-    bool IsCentered() { return *this == Hat(); }
+    Hat() { up = right = down = left = 0; }
     bool operator==(const Hat &lhs) const { return up == lhs.up && right == lhs.right && down == lhs.down && left == lhs.left; }
-    bool operator!=(const Hat &lhs) const { return !(*this == lhs); }
-    unsigned char &operator[](unsigned int i)
-    {
-      switch (i)
-      {
-      case 0: return up;
-      case 1: return right;
-      case 2: return down;
-      case 3: return left;
-      default: return up;
-      }
-    }
+    // Iterate through cardinal directions in an ordinal fasion
+    unsigned char &operator[](unsigned int i);
+    // Translate this hat into a cardinal direction ("N", "NE", "E", ...) or "CENTERED"
+    const char *GetDirection() const;
 
+    // 1 if pressed, 0 if unpressed
     unsigned char up;
     unsigned char right;
     unsigned char down;
     unsigned char left;
   };
 
+  /**
+   * Translate an action ID, found in Key.h, to the corresponding RetroPad ID.
+   * Returns -1 if the ID is invalid for the device given by m_device
+   * (currently, m_device doesn't exist and this value is forced to
+   * RETRO_DEVICE_JOYPAD).
+   */
   int TranslateActionID(int id) const;
 
-  bool m_bActive;
+  bool m_bActive; // Unused currently
 
   // RETRO_DEVICE_ID_JOYPAD_R3 is the last key in libretro.h
   int16_t       m_joypadState[ACTION_JOYPAD_CONTROL_END - ACTION_GAME_CONTROL_START + 1];

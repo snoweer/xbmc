@@ -40,6 +40,37 @@
 #define JOY_POV_NW   (JOY_POVLEFT + JOY_POV_360) / 2
 
 
+
+unsigned char &CRetroPlayerInput::Hat::operator[](unsigned int i)
+{
+  switch (i)
+  {
+  case 0: return up;
+  case 1: return right;
+  case 2: return down;
+  case 3: return left;
+  default: return up;
+  }
+}
+
+#define MAKE_DIRECTION(n, e, s, w) ((n) << 3 | (e) << 2 | (s) << 1 | (w))
+const char *CRetroPlayerInput::Hat::GetDirection() const
+{
+  switch (MAKE_DIRECTION(up, right, down, left))
+  {
+  case MAKE_DIRECTION(1, 0, 0, 0): return "N";
+  case MAKE_DIRECTION(1, 1, 0, 0): return "NE";
+  case MAKE_DIRECTION(0, 1, 0, 0): return "E";
+  case MAKE_DIRECTION(0, 1, 1, 0): return "SE";
+  case MAKE_DIRECTION(0, 0, 1, 0): return "S";
+  case MAKE_DIRECTION(0, 0, 1, 1): return "SW";
+  case MAKE_DIRECTION(0, 0, 0, 1): return "W";
+  case MAKE_DIRECTION(1, 0, 0, 1): return "NW";
+  default: return "CENTERED";
+  }
+}
+
+
 CRetroPlayerInput::CRetroPlayerInput() : m_bActive(false)
 {
 }
@@ -159,13 +190,13 @@ void CRetroPlayerInput::ProcessGamepad(const std::string &device, const unsigned
     {
       // Record the new joypad state
       m_joypadState[id] = bPressed;
-      CLog::Log(LOGDEBUG, "RetroPlayerInput: %s, action=%s, ID=%d",
-        bPressed ? "button press" : "button unpress", actionName.c_str(), actionID);
+      CLog::Log(LOGDEBUG, "RetroPlayerInput: Gamepad %s button %s, action=%s, ID=%d", device.c_str(),
+        bPressed ? "press" : "unpress", actionName.c_str(), actionID);
     }
     else
     {
-      CLog::Log(LOGDEBUG, "RetroPlayerInput: Invalid %s, action=%s, ID=%d",
-        bPressed ? "button press" : "button unpress", actionName.c_str(), actionID);
+      CLog::Log(LOGDEBUG, "RetroPlayerInput: Gamepad %s invalid button %s, action=%s, ID=%d", device.c_str(),
+        bPressed ? "press" : "unpress", actionName.c_str(), actionID);
     }
   }
 
@@ -175,27 +206,33 @@ void CRetroPlayerInput::ProcessGamepad(const std::string &device, const unsigned
   else if (numHats > 4)
     numHats = 4;
 
-  for (unsigned int iHat = 0; iHat < numHats; iHat++)
+  for (unsigned int iHat = 0; iHat < (unsigned int)numHats; iHat++)
   {
     // Unpack unsigned long hats[iHat] into a Hat struct
     Hat hat;
-    bool bCentered = (hats[iHat] & 0xFFFF == 0xFFFF);
+    bool bCentered = ((hats[iHat] & 0xFFFF) == 0xFFFF);
     if (!bCentered)
     {
+      // We disallow antagonistic buttons from being pressed together
       if ((JOY_POV_NW <= hats[iHat] && hats[iHat] <= JOY_POV_360) || hats[iHat] <= JOY_POV_NE)
         hat.up = 1;
+      else if (JOY_POV_SE <= hats[iHat] && hats[iHat] <= JOY_POV_SW)
+        hat.down = 1;
+
       if (JOY_POV_NE <= hats[iHat] && hats[iHat] <= JOY_POV_SE)
         hat.right = 1;
-      if (JOY_POV_SE <= hats[iHat] && hats[iHat] <= JOY_POV_SW)
-        hat.down = 1;
-      if (JOY_POV_SW <= hats[iHat] && hats[iHat] <= JOY_POV_NW)
+      else if (JOY_POV_SW <= hats[iHat] && hats[iHat] <= JOY_POV_NW)
         hat.left = 1;
     }
+    
+    // We only care if a change in state is detected
+    if (hat == m_hatState[iHat])
+      continue;
+    CLog::Log(LOGDEBUG, "RetroPlayerInput: Gamepad %s, new hat %d direction is %s", device.c_str(), iHat, hat.GetDirection());
 
     // Using ordinal directions instead of cardinal directions lets us use a for loop
     for (unsigned int i = 0; i < 4; i++)
     {
-      // We only care if a change in state is detected
       if (hat[i] == m_hatState[iHat][i])
         continue;
 
@@ -211,23 +248,24 @@ void CRetroPlayerInput::ProcessGamepad(const std::string &device, const unsigned
       int        actionID;
       CStdString actionName;
       bool       fullrange; // unused
-      // Actual button ID is bid + 1
       if (!CButtonTranslator::GetInstance().TranslateJoystickString(WINDOW_FULLSCREEN_VIDEO,
           device.c_str(), buttonID, JACTIVE_HAT, actionID, actionName, fullrange))
         continue;
+
+      static const char *dir[] = {"UP", "RIGHT", "DOWN", "LEFT"};
 
       int id = TranslateActionID(actionID);
       if (0 <= id && id < (int)(sizeof(m_joypadState) / sizeof(m_joypadState[0])))
       {
         // Record the new joypad state
         m_joypadState[id] = hat[i];
-        CLog::Log(LOGDEBUG, "RetroPlayerInput: %s, action=%s, ID=%d",
-          hat[i] ? "hat press" : "hat unpress", actionName.c_str(), actionID);
+        CLog::Log(LOGDEBUG, "RetroPlayerInput: Hat %s %s, action=%s, ID=%d", dir[i],
+          hat[i] ? "press" : "unpress", actionName.c_str(), actionID);
       }
       else
       {
-        CLog::Log(LOGDEBUG, "RetroPlayerInput: Invalid %s, action=%s, ID=%d",
-          hat[i] ? "hat press" : "hat unpress", actionName.c_str(), actionID);
+        CLog::Log(LOGDEBUG, "RetroPlayerInput: Invalid hat %s %s, action=%s, ID=%d", dir[i],
+          hat[i] ? "press" : "unpress", actionName.c_str(), actionID);
       }
     }
   }
@@ -237,6 +275,7 @@ int CRetroPlayerInput::TranslateActionID(int id) const
 {
   int m_device = RETRO_DEVICE_JOYPAD; // Until we keep track of multiple devices
 
+  // TODO: Perform better bounds-checking.
   switch (m_device)
   {
   case RETRO_DEVICE_JOYPAD:
