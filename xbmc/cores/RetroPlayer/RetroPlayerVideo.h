@@ -37,19 +37,10 @@ class CRetroPlayerVideo : public CThread
 public:
   struct Frame
   {
-    const void * data;
-    unsigned int width;
-    unsigned int height;
-    size_t       pitch;
-    Frame() { data = NULL; width = 0; height = 0; pitch = 0; }
-    Frame(const void *data, unsigned width, unsigned height, size_t pitch)
-      : data(data), width(width), height(height), pitch(pitch) { }
-    Frame(const Frame &frame) { *this = frame; }
-    Frame &operator=(const Frame &frame)
-    {
-      if (this != &frame) { data = frame.data; width = frame.width; height = frame.height; pitch = frame.pitch; }
-      return *this;
-    }
+    unsigned char *data;
+    unsigned int  width;
+    unsigned int  height;
+    size_t        pitch;
   };
 
   CRetroPlayerVideo();
@@ -95,13 +86,13 @@ protected:
 private:
   bool CheckConfiguration(const DVDVideoPicture &picture);
 
-  std::queue<Frame>  m_frames;
+  Frame              m_queuedFrame;
   CEvent             m_frameReady;
   CEvent             m_pauseEvent;
   CCriticalSection   m_critSection;
   retro_pixel_format m_pixelFormat;
   DllSwScale         m_dllSwScale;
-  SwsContext        *m_swsContext;
+  SwsContext         *m_swsContext;
 
   bool               m_bAllowFullscreen;
   double             m_framerate;

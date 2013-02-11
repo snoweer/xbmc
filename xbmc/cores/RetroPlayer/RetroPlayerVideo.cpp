@@ -27,10 +27,9 @@
 #include "cores/VideoRenderers/RenderFlags.h"
 #include "utils/log.h"
 
-#define CLAMP(a, min, max) ((a) > (max) ? (max) : ((a) < (min) ? (min) : (a)))
-
 CRetroPlayerVideo::CRetroPlayerVideo()
   : CThread("RetroPlayerVideo"),
+    m_queuedFrame(), // value-initialize
     m_pixelFormat(RETRO_PIXEL_FORMAT_0RGB1555),
     m_swsContext(NULL),
     m_bAllowFullscreen(false),
@@ -68,9 +67,10 @@ void CRetroPlayerVideo::Process()
       continue;
     }
 
-    { // Enter critical section
+    {
       CSingleLock lock(m_critSection);
-      if (!m_frames.size())
+
+      if (!m_queuedFrame.data)
       {
         lock.Leave();
         // Assume a frame is late if the jitter is ten times the frame's display time
@@ -82,15 +82,10 @@ void CRetroPlayerVideo::Process()
         // If event wasn't triggered, we might be done, so check m_bStop again
         continue;
       }
-      // If several frames built up, ignore all but the most recent
-      while (m_frames.size())
-      {
-        // Clean up any ignored frames
-        delete[] (uint8_t*)frame.data;
-        frame = m_frames.front();
-        m_frames.pop();
-      }
-    } // End critical section
+
+      frame = m_queuedFrame;
+      m_queuedFrame.data = NULL;
+    }
 
     pPicture = CDVDCodecUtils::AllocatePicture(frame.width, frame.height);
     if (!pPicture)
@@ -121,12 +116,16 @@ void CRetroPlayerVideo::Process()
     }
 
     // Colorspace conversion
-    uint8_t *src[] = { reinterpret_cast<uint8_t*>(const_cast<void*>(frame.data)), 0, 0, 0 };
+    uint8_t *src[] = { frame.data, 0, 0, 0 };
     int      srcStride[] = { frame.pitch, 0, 0, 0 };
     uint8_t *dst[] = { pPicture->data[0], pPicture->data[1], pPicture->data[2], 0 };
     int      dstStride[] = { pPicture->iLineSize[0], pPicture->iLineSize[1], pPicture->iLineSize[2], 0 };
 
     m_dllSwScale.sws_scale(m_swsContext, src, srcStride, 0, frame.height, dst, dstStride);
+
+    // Clean up the data allocated in CRetroPlayer::OnVideoFrame()
+    delete[] frame.data;
+    frame.data = NULL;
 
     // Get ready to drop the picture off on RenderManger's doorstep
     if (!g_renderManager.IsStarted())
@@ -138,10 +137,6 @@ void CRetroPlayerVideo::Process()
     int index = g_renderManager.AddVideoPicture(*pPicture);
     g_renderManager.FlipPage(CThread::m_bStop);
     CDVDCodecUtils::FreePicture(pPicture);
-
-    // Clean up the data allocated in CRetroPlayer::OnVideoFrame()
-    delete[] (uint8_t*)frame.data;
-    frame.data = NULL;
   }
 
   if (m_swsContext)
@@ -151,8 +146,6 @@ void CRetroPlayerVideo::Process()
 
   m_bStop = true;
 }
-
-
 
 bool CRetroPlayerVideo::CheckConfiguration(const DVDVideoPicture &picture)
 {
@@ -206,8 +199,9 @@ bool CRetroPlayerVideo::CheckConfiguration(const DVDVideoPicture &picture)
     if (m_swsContext)
       m_dllSwScale.sws_freeContext(m_swsContext);
 
+    // Colorspace conversion
     m_swsContext = m_dllSwScale.sws_getContext(
-      picture.iWidth,    picture.iHeight,    format,
+      picture.iWidth, picture.iHeight, format,
       picture.iWidth, picture.iHeight, PIX_FMT_YUV420P,
       SWS_FAST_BILINEAR | SwScaleCPUFlags(), NULL, NULL, NULL
     );
@@ -220,11 +214,19 @@ void CRetroPlayerVideo::SendVideoFrame(const void *data, unsigned width, unsigne
   if (IsRunning())
   {
     CSingleLock lock(m_critSection);
-    m_frames.push(Frame(data, width, height, pitch));
-  }
-  else
-  {
-    // Frame was discarded, so make sure we clean up after CRetroPlayer::OnVideoFrame()
-    delete[] (uint8_t*)data;
+
+    // If frame is allocated and the same size, we can avoid an extra allocation
+    if (!(m_queuedFrame.data && pitch * height == m_queuedFrame.pitch * m_queuedFrame.height))
+    {
+      delete[] m_queuedFrame.data;
+      m_queuedFrame.data = new unsigned char[pitch * height];
+      if (!m_queuedFrame.data)
+        return;
+    }
+
+    memcpy(m_queuedFrame.data, data, pitch * height);
+    m_queuedFrame.width  = width;
+    m_queuedFrame.height = height;
+    m_queuedFrame.pitch  = pitch;
   }
 }

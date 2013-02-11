@@ -235,14 +235,7 @@ void CRetroPlayer::OnVideoFrame(const void *data, unsigned width, unsigned heigh
 {
   // Verify all game client data. You don't know where that code's been.
   if (data && width && height && pitch)
-  {
-    uint8_t *copy = new uint8_t[pitch * height];
-    if (copy)
-    {
-      memcpy(copy, data, pitch * height * sizeof(uint8_t));
-      m_retroPlayer->m_video.SendVideoFrame(copy, width, height, pitch);
-    }
-  }
+    m_retroPlayer->m_video.SendVideoFrame(data, width, height, pitch);
 }
 
 /* static */
