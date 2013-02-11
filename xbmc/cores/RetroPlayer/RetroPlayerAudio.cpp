@@ -129,7 +129,7 @@ void CRetroPlayerAudio::Process()
 
 double CRetroPlayerAudio::GetDelay()
 {
-  return m_pAudioStream && !m_bStop ? m_pAudioStream->GetDelay() : 0.0;
+  return !m_bStop && m_pAudioStream ? m_pAudioStream->GetDelay() : 0.0;
 }
 
 void CRetroPlayerAudio::SendAudioFrames(const int16_t *data, size_t frames)
