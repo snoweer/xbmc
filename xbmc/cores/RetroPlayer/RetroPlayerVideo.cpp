@@ -36,8 +36,7 @@ CRetroPlayerVideo::CRetroPlayerVideo()
     m_framerate(0.0),
     m_outputWidth(0),
     m_outputHeight(0),
-    m_outputFramerate(0.0),
-    m_bPaused(false)
+    m_outputFramerate(0.0)
 {
 }
 
@@ -46,45 +45,46 @@ CRetroPlayerVideo::~CRetroPlayerVideo()
   StopThread();
 }
 
-void CRetroPlayerVideo::GoForth(double framerate)
+void CRetroPlayerVideo::GoForth(double framerate, bool fullscreen)
 {
   m_framerate = framerate;
+  m_bAllowFullscreen = fullscreen;
   Create();
+}
+
+void CRetroPlayerVideo::StopThread()
+{
+  m_bStop = true;
+  m_frameEvent.Set();
+  CThread::StopThread();
 }
 
 void CRetroPlayerVideo::Process()
 {
   Frame frame;
-  DVDVideoPicture *pPicture;
+  DVDVideoPicture *pPicture = NULL;
 
-  m_dllSwScale.Load();
+  if (!m_dllSwScale.Load())
+    return;
 
+  // TODO: Should we lock m_bStop to prevent a race between this and m_frameEvent.Wait()?
   while (!m_bStop)
   {
-    if (m_bPaused)
-    {
-      m_pauseEvent.Wait();
-      continue;
-    }
+    m_frameEvent.Wait();
+    if (m_bStop)
+      break;
 
     {
       CSingleLock lock(m_critSection);
 
+      // Only proceed if we have a frame to render
       if (!m_queuedFrame.data)
-      {
-        lock.Leave();
-        // Assume a frame is late if the jitter is ten times the frame's display time
-        if (!m_frameReady.WaitMSec((int)(1000 * 10 / m_framerate)))
-          m_frameReady.Reset();
-        else
-          CLog::Log(LOGNOTICE, "RetroPlayerVideo: Timeout waiting for frame, status is %s",
-              !m_bStop ? "running" : "not running");
-        // If event wasn't triggered, we might be done, so check m_bStop again
         continue;
-      }
 
+      // Deep copy
       frame = m_queuedFrame;
-      m_queuedFrame.data = NULL;
+      frame.data = new unsigned char[frame.pitch * frame.height];
+      memcpy(frame.data, m_queuedFrame.data, frame.pitch * frame.height);
     }
 
     pPicture = CDVDCodecUtils::AllocatePicture(frame.width, frame.height);
@@ -111,7 +111,7 @@ void CRetroPlayerVideo::Process()
     // CheckConfiguration() should have set up our SWScale context
     if (!m_swsContext)
     {
-      CLog::Log(LOGERROR, "RetroPlayerVideo: Failed to grab SWScale context");
+      CLog::Log(LOGERROR, "RetroPlayerVideo: Failed to grab SWScale context, bailing");
       break;
     }
 
@@ -130,21 +130,33 @@ void CRetroPlayerVideo::Process()
     // Get ready to drop the picture off on RenderManger's doorstep
     if (!g_renderManager.IsStarted())
     {
-      CLog::Log(LOGERROR, "RetroPlayerVideo: Renderer not started");
+      CLog::Log(LOGERROR, "RetroPlayerVideo: Renderer not started, bailing");
       break;
     }
 
     int index = g_renderManager.AddVideoPicture(*pPicture);
     g_renderManager.FlipPage(CThread::m_bStop);
     CDVDCodecUtils::FreePicture(pPicture);
+    pPicture = NULL;
   }
+
+  {
+    CSingleLock lock(m_critSection);
+    delete[] m_queuedFrame.data;
+    m_queuedFrame.data = NULL;
+    // Don't want to allocate more data in SendVideoFrame()
+    m_bStop = true;
+  }
+
+  // In case we hit a break above
+  delete[] frame.data;
+  if (pPicture)
+    CDVDCodecUtils::FreePicture(pPicture);
 
   if (m_swsContext)
     m_dllSwScale.sws_freeContext(m_swsContext);
 
   m_dllSwScale.Unload();
-
-  m_bStop = true;
 }
 
 bool CRetroPlayerVideo::CheckConfiguration(const DVDVideoPicture &picture)
@@ -211,10 +223,10 @@ bool CRetroPlayerVideo::CheckConfiguration(const DVDVideoPicture &picture)
 
 void CRetroPlayerVideo::SendVideoFrame(const void *data, unsigned width, unsigned height, size_t pitch)
 {
-  if (IsRunning())
-  {
-    CSingleLock lock(m_critSection);
+  CSingleLock lock(m_critSection);
 
+  if (!m_bStop && IsRunning())
+  {
     // If frame is allocated and the same size, we can avoid an extra allocation
     if (!(m_queuedFrame.data && pitch * height == m_queuedFrame.pitch * m_queuedFrame.height))
     {
@@ -228,5 +240,10 @@ void CRetroPlayerVideo::SendVideoFrame(const void *data, unsigned width, unsigne
     m_queuedFrame.width  = width;
     m_queuedFrame.height = height;
     m_queuedFrame.pitch  = pitch;
+
+    // Notify the video thread that we're ready to display the picture. If
+    // m_frameEvent is signaled before hitting Wait() above, then it will have
+    // to wait until the next SendVideoFrame() before continuing.
+    m_frameEvent.Set();
   }
 }

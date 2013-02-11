@@ -156,9 +156,7 @@ bool CRetroPlayer::CloseFile()
 
 void CRetroPlayer::Process()
 {
-  m_video.EnableFullscreen(m_PlayerOptions.fullscreen);
-
-  // Start the video thread
+  // Prepare the video thread
   double framerate = m_gameClient->GetFrameRate();
   if (framerate < 5 || framerate > 100)
   {
@@ -168,7 +166,8 @@ void CRetroPlayer::Process()
 
   // Start the audio thread
   double samplerate = m_gameClient->GetSampleRate();
-  if (samplerate < 1 /* ??? */ || samplerate > 384000)
+  // TODO: min/max sample rate?
+  if (samplerate < 1 || samplerate > 384000)
   {
     // TODO: Put checks in CRetroPlayerAudio::SendAudioFrames() for inactivity
     CLog::Log(LOGNOTICE, "RetroPlayer: Game client reported sample rate of %f, continuing without sound", samplerate);
@@ -176,7 +175,7 @@ void CRetroPlayer::Process()
   else
   {
     // Adjust video clock to give us an integer sample rate
-    int newSamplerate = static_cast<int>(samplerate);
+    int newSamplerate = (int)samplerate;
 
     if (newSamplerate != samplerate)
     {
@@ -189,7 +188,7 @@ void CRetroPlayer::Process()
     m_audio.GoForth(newSamplerate);
   }
 
-  m_video.GoForth(framerate);
+  m_video.GoForth(framerate, m_PlayerOptions.fullscreen);
   m_input.Begin();
 
   const double frametime = 1000 * 1000 / framerate; // useconds
@@ -200,12 +199,11 @@ void CRetroPlayer::Process()
   {
     if (m_playSpeed <= PLAYSPEED_PAUSED)
     {
-      m_video.Pause();
+      // No need to pause video, the absence of frames will pause it
       m_audio.Pause();
       m_pauseEvent.Wait();
       // Reset the clock
       nextpts = CDVDClock::GetAbsoluteClock() + frametime;
-      m_video.UnPause();
       m_audio.UnPause();
       continue;
     }
@@ -213,7 +211,6 @@ void CRetroPlayer::Process()
     // Run the game client for the next frame
     m_gameClient->RunFrame();
 
-    m_video.Tickle();
     // Audio tickling occurs in CRetroPlayerAudio::SendAudioFrames()
 
     CDVDClock::WaitAbsoluteClock(nextpts);
@@ -223,10 +220,6 @@ void CRetroPlayer::Process()
   m_video.StopThread();
   m_audio.StopThread();
   m_input.Finish();
-}
-
-void CRetroPlayer::OnExit()
-{
   m_bStop = true;
 }
 

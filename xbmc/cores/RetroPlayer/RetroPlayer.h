@@ -111,7 +111,6 @@ public:
 
 protected:
   virtual void Process();
-  virtual void OnExit();
 
 private:
   // Static functions used to send and receive data from the game clients

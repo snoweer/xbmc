@@ -49,7 +49,8 @@ public:
   /**
    * Begin doing what a RetroPlayerVideo does best.
    */
-  void GoForth(double framerate);
+  void GoForth(double framerate, bool fullscreen);
+  void StopThread();
 
   /**
    * Send a video frame to be rendered by this class. The pixel format is
@@ -64,32 +65,20 @@ public:
    */
   void SetPixelFormat(retro_pixel_format pixelFormat) { m_pixelFormat = pixelFormat; }
 
-  void EnableFullscreen(bool bEnable) { m_bAllowFullscreen = bEnable; }
-
-  void Update(bool bPauseDrawing) { g_renderManager.Update(bPauseDrawing); }
-
-  void Pause() { m_bPaused = true; }
-  void UnPause() { m_bPaused = false; m_pauseEvent.Set(); }
-
   /**
-   * This is called immediately after the game client's RunFrame(). Inside
-   * RunFrame(), a callback is invoked that calls SendVideoFrame(). Therefore,
-   * once RunFrame() exits, a frame is waiting to be rendered and this method
-   * wakes the thread to process the frame.
+   * Small bit of trivia: IPlayer::Update() is unused and can be removed.
    */
-  void Tickle() { m_frameReady.Set(); }
+  virtual void Update(bool bPauseDrawing) { g_renderManager.Update(bPauseDrawing); }
 
 protected:
   virtual void Process();
-  //virtual void OnExit();
 
 private:
   bool CheckConfiguration(const DVDVideoPicture &picture);
 
   Frame              m_queuedFrame;
-  CEvent             m_frameReady;
-  CEvent             m_pauseEvent;
-  CCriticalSection   m_critSection;
+  CEvent             m_frameEvent;  // Set immediately when a new frame is queued
+  CCriticalSection   m_critSection; // Guard m_queuedFrame
   retro_pixel_format m_pixelFormat;
   DllSwScale         m_dllSwScale;
   SwsContext         *m_swsContext;
@@ -103,5 +92,4 @@ private:
   unsigned int       m_outputWidth;
   unsigned int       m_outputHeight;
   double             m_outputFramerate;
-  bool               m_bPaused;
 };
