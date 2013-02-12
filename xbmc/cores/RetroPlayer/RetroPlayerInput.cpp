@@ -157,8 +157,6 @@ void CRetroPlayerInput::ProcessKeyUp(const CKey &key)
 void CRetroPlayerInput::ProcessGamepad(const std::string &device, const unsigned char buttons[GAMEPAD_BUTTON_COUNT],
   int numHats, const unsigned long hats[4])
 {
-  // Only process buttons sent to our window
-  // TODO: Same fallback procedure as the one mentioned above
   int window = !g_windowManager.HasModalDialog() ? g_windowManager.GetActiveWindow() : g_windowManager.GetTopMostModalDialogID();
 
   CSingleLock lock(m_statesGuard);
@@ -170,7 +168,11 @@ void CRetroPlayerInput::ProcessGamepad(const std::string &device, const unsigned
     if (bPressed == m_buttonState[bid])
       continue;
 
-    // Don't record presses outside of fullscreen video (unpresses are ok)
+    // We only process button presses in WINDOW_FULLSCREEN_VIDEO. We check for
+    // this instead of WINDOW_FULLSCREEN_GAME because FULLSCREEN_GAME is a thin
+    // alias for FULLSCREEN_VIDEO, used only for translating keyboard and gamepad
+    // events (this way, our translaters don't have to query the active player 
+    // core). Later on, when translating, *then* we'll use WINDOW_FULLSCREEN_GAME.
     if (bPressed && (window & WINDOW_ID_MASK) != WINDOW_FULLSCREEN_VIDEO)
       continue;
 
@@ -181,7 +183,7 @@ void CRetroPlayerInput::ProcessGamepad(const std::string &device, const unsigned
     CStdString actionName;
     bool       fullrange; // unused
     // Actual button ID is bid + 1
-    if (!CButtonTranslator::GetInstance().TranslateJoystickString(WINDOW_FULLSCREEN_VIDEO,
+    if (!CButtonTranslator::GetInstance().TranslateJoystickString(WINDOW_FULLSCREEN_GAME,
         device.c_str(), bid + 1, JACTIVE_BUTTON, actionID, actionName, fullrange))
       continue;
 
@@ -248,7 +250,7 @@ void CRetroPlayerInput::ProcessGamepad(const std::string &device, const unsigned
       int        actionID;
       CStdString actionName;
       bool       fullrange; // unused
-      if (!CButtonTranslator::GetInstance().TranslateJoystickString(WINDOW_FULLSCREEN_VIDEO,
+      if (!CButtonTranslator::GetInstance().TranslateJoystickString(WINDOW_FULLSCREEN_GAME,
           device.c_str(), buttonID, JACTIVE_HAT, actionID, actionName, fullrange))
         continue;
 

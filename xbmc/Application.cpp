@@ -3011,6 +3011,12 @@ bool CApplication::ProcessGamepad(float frameTime)
     return false;
 
   int iWin = GetActiveWindowID();
+
+  // If we're playing a game fullscreen, we want to process gamepad actions
+  // for WINDOW_FULLSCREEN_GAME instead of WINDOW_FULLSCREEN_VIDEO.
+  if ((iWin & WINDOW_ID_MASK) == WINDOW_FULLSCREEN_VIDEO && m_pPlayer && m_eCurrentPlayer == EPC_RETROPLAYER)
+    iWin = WINDOW_FULLSCREEN_GAME;
+
   int bid = 0;
   g_Joystick.Update();
   if (g_Joystick.GetButton(bid))

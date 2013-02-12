@@ -23,7 +23,7 @@
 
 #include "games/libretro/libretro.h"
 #include "guilib/Key.h"
-#include "threads/Thread.h"
+#include "threads/CriticalSection.h"
 
 #include <stdint.h>
 
