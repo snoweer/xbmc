@@ -96,7 +96,7 @@ bool CRetroPlayer::OpenFile(const CFileItem& file, const CPlayerOptions& options
   m_file = file;
   m_PlayerOptions = options;
 
-  m_gameClient = CGameManager::Get().GetGameClient(m_file.GetPath());
+  m_gameClient = CGameManager::Get().GetGameClient(m_file);
   if (!m_gameClient)
   {
     CLog::Log(LOGERROR, "RetroPlayer: Error: no suitable game clients");
