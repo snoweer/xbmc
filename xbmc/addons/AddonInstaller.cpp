@@ -706,8 +706,10 @@ void CAddonInstallJob::OnPostInstall(bool reloadAddon)
   // Update the cache of game client addons used in the ROM-launching selection process
   if (m_addon->Type() == ADDON_GAMEDLL)
   {
-    GameClientPtr gameClient = boost::dynamic_pointer_cast<CGameClient>(m_addon);
-    CGameManager::Get().RegisterAddon(gameClient);
+    // Regrab from manager to have the correct path set
+    AddonPtr addon; 
+    CAddonMgr::Get().GetAddon(m_addon->ID(), addon);
+    CGameManager::Get().RegisterAddon(boost::dynamic_pointer_cast<CGameClient>(addon));
   }
 }
 

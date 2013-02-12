@@ -586,7 +586,7 @@ bool CAddonDatabase::DisableAddon(const CStdString &addonID, bool disable /* = t
           PVR::CPVRManager::Get().Start(true);
 
         // If the addon isn't a game client, UnregisterAddon() will still do the right thing
-        CGameManager::Get().UnregisterAddon(addonID);
+        CGameManager::Get().UnregisterAddonByID(addonID);
 
         return true;
       }

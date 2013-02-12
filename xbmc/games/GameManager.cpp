@@ -23,39 +23,130 @@
 #include "GameManager.h"
 #include "addons/AddonManager.h"
 #include "utils/log.h"
+#include "utils/StringUtils.h"
+#include "threads/SingleLock.h"
 #include "utils/URIUtils.h"
+#include "utils/Variant.h"
 
 using namespace ADDON;
 using namespace GAME_INFO;
 
-typedef struct
+struct PlatformMap
 {
-  GameSystemType system;
-  const char *shortName;
-  const char *longName;
-  const char *extensions;
-} SystemMapping;
+  GamePlatform id;
+  const char   *name;
+  // Extensions must be unique to the platform (e.g. no zip). Currently unused
+  const char   *extensions;
+};
 
-static const SystemMapping systemInfo[] =
+static const PlatformMap platformInfo[] =
 {
-  {SYSTEM_GameBoy,        "GB",   "GameBoy",         "gb"},
-  {SYSTEM_GameBoyColor,   "GBC",  "GameBoy Color",   "gbc|cgb|sgb"},
-  {SYSTEM_GameBoyAdvance, "GBA",  "GameBoy Advance", "gba|agb|elf|mb"}, // bin
-  {SYSTEM_SuperNintendo,  "SNES", "Super Nintendo",  "smc|sfc|fig|gd3|gd7|dx2|bsx|swc"}
+  { PLATFORM_UNKNOWN,              "Unknown",              "" },
+  { PLATFORM_OTHER,                "Other",                "" },
+  { PALTFORM_3D0,                  "3DO",                  "" },
+  { PLATFORM_AMIGA,                "Amiga",                "" },
+  { PLATFORM_AMIGA_CD32,           "Amiga CD32",           "" },
+  { PALTFORM_AMSTRAD_CPC,          "Amstrad CPC",          "" },
+  { PALTFORM_APPLE_II,             "Apple II",             "" },
+  { PALTFORM_ATARI_2600,           "Atari 2600",           "" },
+  { PALTFORM_ATARI_5200,           "Atari 5200",           "" },
+  { PLATFORM_ATARI_7800,           "Atari 7800",           "" },
+  { PLATFORM_ATARI_8_BIT,          "Atari 8-bit",          "" },
+  { PLATFORM_ATARI_ST,             "Atari ST",             "" },
+  { PLATFORM_BBC_MICRO,            "BBC Micro",            "" },
+  { PLATFORM_BREW,                 "BREW",                 "" },
+  { PLATFORM_CD_I,                 "CD-i",                 "" },
+  { PLATFORM_CHANNEL_F,            "Channel F",            "" },
+  { PLATFORM_COLECO_VISION,        "ColecoVision",         "" },
+  { PLATFORM_COMMODORE_128,        "Commodore 128",        "" },
+  { PLATFORM_COMMODORE_64,         "Commodore 64",         "" },
+  { PLATFORM_COMMODORE_PET_CBM,    "Commodore PET/CBM",    "" },
+  { PLATFORM_DOJA,                 "DoJa",                 "" },
+  { PLATFORM_DOS,                  "DOS",                  "" },
+  { PLATFORM_DRAGON_32_64,         "Dragon 32/64",         "" },
+  { PLATFORM_DREAMCAST,            "Dreamcast",            "" },
+  { PLATFORM_ELECTRON,             "Electron",             "" },
+  { PLATFORM_EXEN,                 "ExEn",                 "" },
+  { PLATFORM_GAMEBOY,              "Game Boy",             "gb" },
+  { PLATFORM_GAMEBOY_ADVANCE,      "Game Boy Advance",     "gba|agb|elf|mb|bin" },
+  { PLATFORM_GAMEBOY_COLOR,        "Game Boy Color",       "gbc|cgb|sgb" },
+  { PLATFORM_GAMECUBE,             "GameCube",             "" },
+  { PLATFORM_GAME_GEAR,            "Game Gear",            "" },
+  { PLATFORM_GENESIS,              "Genesis",              "" },
+  { PLATFORM_GIZMONDO,             "Gizmondo",             "" },
+  { PLATFORM_INTELLIVISION,        "Intellivision",        "" },
+  { PLATFORM_JAGUAR,               "Jaguar",               "" },
+  { PLATFORM_LINUX,                "Linux",                "" },
+  { PLATFORM_LYNX,                 "Lynx",                 "" },
+  { PLATFORM_MACINTOSH,            "Macintosh",            "" },
+  { PLATFORM_MAME,                 "MAME",                 "" },
+  { PLATFORM_MOPHUN,               "Mophun",               "" },
+  { PLATFORM_MSX,                  "MSX",                  "" },
+  { PLATFORM_NEO_GEO,              "Neo Geo",              "" },
+  { PLATFORM_NEO_GEO_CD,           "Neo Geo CD",           "" },
+  { PLATFORM_NEO_GEO_POCKET,       "Neo Geo Pocket",       "" },
+  { PLATFORM_NEO_GEO_POCKET_COLOR, "Neo Geo Pocket Color", "" },
+  { PLATFORM_NES,                  "NES",                  "" },
+  { PLATFORM_N_GAGE,               "N-Gage",               "" },
+  { PLATFORM_NINTENDO_64,          "Nintendo 64",          "" },
+  { PLATFORM_NINTENDO_DS,          "Nintendo DS",          "" },
+  { PLATFORM_NINTENDO_DSI,         "Nintendo DSi",         "" },
+  { PLATFORM_ODYSSEY,              "Odyssey",              "" },
+  { PLATFORM_ODYSSEY_2,            "Odyssey 2",            "" },
+  { PLATFORM_PC_88,                "PC-88",                "" },
+  { PLATFORM_PC_98,                "PC-98",                "" },
+  { PLATFORM_PC_BOOTER,            "PC Booter",            "" },
+  { PLATFORM_PC_FX,                "PC-FX",                "" },
+  { PLATFORM_PLAYSTATION,          "PlayStation",          "" },
+  { PLATFORM_PLAYSTATION_2,        "PlayStation 2",        "" },
+  { PLATFORM_PLAYSTATION_3,        "PlayStation 3",        "" },
+  { PLATFORM_PSP,                  "PSP",                  "" },
+  { PLATFORM_SEGA_32X,             "SEGA 32X ",            "" },
+  { PLATFORM_SEGA_CD,              "SEGA CD",              "" },
+  { PLATFORM_SEGA_MASTER_SYSTEM,   "SEGA Master System",   "" },
+  { PLATFORM_SEGA_SATURN,          "SEGA Saturn",          "" },
+  { PLATFORM_SNES,                 "SNES",                 "smc|sfc|fig|gd3|gd7|dx2|bsx|swc" },
+  { PLATFORM_SPECTRAVIDEO,         "Spectravideo",         "" },
+  { PLATFORM_TI_99_4A,             "TI-99/4A",             "" },
+  { PLATFORM_TRS_80,               "TRS-80",               "" },
+  { PLATFORM_TRS_80_COCO,          "TRS-80 CoCo",          "" },
+  { PLATFORM_TURBOGRAFX_16,        "TurboGrafx-16",        "" },
+  { PLATFORM_TURBOGRAFX_CD,        "TurboGrafx CD",        "" },
+  { PLATFORM_VECTREX,              "Vectrex",              "" },
+  { PLATFORM_VIC_20,               "VIC-20",               "" },
+  { PLATFORM_VIRTUAL_BOY,          "Virtual Boy",          "" },
+  { PLATFORM_V_SMILE,              "V.Smile",              "" },
+  { PLATFORM_WII,                  "Wii",                  "" },
+  { PLATFORM_WINDOWS,              "Windows",              "" },
+  { PLATFORM_WINDOWS_3X,           "Windows 3.x",          "" },
+  { PLATFORM_WONDERSWAN,           "WonderSwan",           "" },
+  { PLATFORM_WONDERSWAN_COLOR,     "WonderSwan Color",     "" },
+  { PLATFORM_XBOX,                 "Xbox",                 "" },
+  { PLATFORM_XBOX_360,             "Xbox 360",             "" },
+  { PLATFORM_ZEEBO,                "Zeebo",                "" },
+  { PLATFORM_ZODIAC,               "Zodiac",               "" },
+  { PLATFORM_ZX_SPECTR,            "ZX Spectr",            "" },
 };
 
 /* TEMPORARY */
 // Remove this struct when libretro has an API call to query the number of
-// controller ports a system supports. If this code is still here in six months,
+// controller ports a game supports. If this code is still here in six months,
 // Garrett will be very unhappy. I found a buffer overflow in SNES9x when
 // trying to set controller ports 3-8, so this API call needs to happen.
-typedef struct { GameSystemType system; int ports; } PortMapping;
+struct PortMapping
+{
+  GamePlatform platform;
+  int          ports;
+};
+
 static const PortMapping ports[] =
 {
-  {SYSTEM_GameBoy,        1},
-  {SYSTEM_GameBoyColor,   1},
-  {SYSTEM_GameBoyAdvance, 1},
-  {SYSTEM_SuperNintendo,  2}
+  { PLATFORM_GAMEBOY,              1 },
+  { PLATFORM_GAMEBOY_COLOR,        1 },
+  { PLATFORM_GAMEBOY_ADVANCE,      1 },
+  { PLATFORM_NEO_GEO_POCKET_COLOR, 1 },
+  { PLATFORM_SEGA_MASTER_SYSTEM,   2 },
+  { PLATFORM_SNES,                 2 },
 };
 
 CGameManager CGameManager::m_gameManagerInstance;
@@ -72,46 +163,36 @@ void CGameManager::RegisterAddons(const VECADDONS &addons)
     RegisterAddon(boost::dynamic_pointer_cast<CGameClient>(*it));
 }
 
-void CGameManager::RegisterAddon(const GameClientPtr &clientAddon)
+void CGameManager::RegisterAddon(GameClientPtr clientAddon)
 {
   // Sanity check
   if (!clientAddon)
     return;
 
-  // Check to see if we are already tracking the add-on
+  CSingleLock lock(m_critSection);
+
+  // If we are already tracking the add-on, erase it so we can refresh the data
   for (std::vector<GameClientObject>::const_iterator it = m_gameClients.begin(); it != m_gameClients.end(); it++)
   {
     if (clientAddon->ID() == it->id)
     {
-      CLog::Log(LOGERROR, "CGameManager: already tracking add-on %s!", it->id.c_str());
-      return;
+      CLog::Log(LOGERROR, "CGameManager: Refreshing information for add-on %s!", clientAddon->ID());
+      m_gameClients.erase(it);
+      break;
     }
   }
 
   // Load the DLL
   if (!clientAddon->Init())
+  {
+    CLog::Log(LOGERROR, "CGameManager: failed to load the DLL for add-on %s", clientAddon->ID());
     return;
+  }
 
   GameClientObject clientObject;
-  clientObject.id            = clientAddon->ID();
-  clientObject.extensions    = clientAddon->GetExtensions(); // Store systems as a '|' delimited string
-  CStdStringArray strSystems = clientAddon->GetSystems();
-
-  // Store system type(s) as a vector. Translate strings to enum types here
-  for (CStdStringArray::iterator it = strSystems.begin(); it != strSystems.end(); it++)
-  {
-    it->Trim();
-    // Get the code for the system type from the systems structure
-    GameSystemType system = SYSTEM_UNKNOWN;
-    for (size_t i = 0; i < sizeof(systemInfo) / sizeof(SystemMapping); i++)
-    {
-      if (it->Equals(systemInfo[i].shortName) || it->Equals(systemInfo[i].longName))
-        clientObject.systems.push_back(systemInfo[i].system);
-      // Only push back SYSTEM_OTHER once (or should it only be pushed back if clientObject.systems.size() == 0?)
-      else if (std::find(clientObject.systems.begin(), clientObject.systems.end(), SYSTEM_OTHER) != clientObject.systems.end())
-        clientObject.systems.push_back(SYSTEM_OTHER);
-    }
-  }
+  clientObject.id = clientAddon->ID();
+  clientObject.extensions = clientAddon->GetExtensions();
+  TranslatePlatformArray(clientAddon->GetPlatforms(), clientObject.paltforms);
 
   // Currently we only store these three fields, so we're all done here
   m_gameClients.push_back(clientObject);
@@ -120,136 +201,102 @@ void CGameManager::RegisterAddon(const GameClientPtr &clientAddon)
   clientAddon->DeInit();
 }
 
-void CGameManager::UnregisterAddon(const CStdString &ID)
+void CGameManager::UnregisterAddonByID(const CStdString &ID)
 {
+  CSingleLock lock(m_critSection);
+
   for (std::vector<GameClientObject>::iterator it = m_gameClients.begin(); it != m_gameClients.end(); it++)
     if (ID == it->id)
       { m_gameClients.erase(it); return; }
   CLog::Log(LOGERROR, "CGameManager: can't unregister %s - not registered!", ID.c_str());
 }
 
-GameClientPtr CGameManager::GetGameClient(const CFileItem& file)
+GameClientPtr CGameManager::GetGameClient(const CFileItem& file) const
 {
-  CStdString strFile = file.GetPath();
-  CStdString strExtension;
-  URIUtils::GetExtension(strFile, strExtension);
-  strExtension.ToLower();
-  strExtension.TrimLeft('.');
-  
-  std::vector<CStdString> ids; // Container to hold discovered clients
-  for (std::vector<GameClientObject>::const_iterator it = m_gameClients.begin();
-      it != m_gameClients.end(); it++)
-  {
-    // Check to see if the game client supports the extension
-    if (ContainsExtesion(it->extensions, strExtension))
-      ids.push_back(it->id);
-    // Fix for clients that don't specify extensions: match on the system type
-    // specified in the game client's addon.xml
-    else if (it->extensions.length() == 0)
-    {
-      GameSystemType type = GetSystemType(strFile);
-      if (type != SYSTEM_UNKNOWN && it->systems.size())
-        if (std::find(it->systems.begin(), it->systems.end(), type) != it->systems.end())
-          ids.push_back(it->id);
-    }
-  }
-
-  // If we still don't have any candidates, search on system type
-  GameSystemType system;
-  if (ids.size() == 0 && (system = GetSystemType(strFile)) != SYSTEM_UNKNOWN)
-  {
-    for (std::vector<GameClientObject>::const_iterator it = m_gameClients.begin();
-        it != m_gameClients.end(); it++)
-    {
-      if (std::find(it->systems.begin(), it->systems.end(), system) != it->systems.end())
-      {
-        ids.push_back(it->id);
-        break;
-      }
-    }
-  }
+  CStdStringArray candidates = GetGameClientIDs(file);
 
   AddonPtr addon;
-  if (ids.size() == 1)
+  if (candidates.size() == 1)
   {
-    CAddonMgr::Get().GetAddon(ids[0], addon, ADDON_GAMEDLL);
+    CAddonMgr::Get().GetAddon(candidates[0], addon, ADDON_GAMEDLL);
     return boost::dynamic_pointer_cast<CGameClient>(addon);
   }
-  else if (ids.size() > 1)
+  else if (candidates.size() > 1)
   {
-    CStdString candidates = ids[0];
-    for (std::vector<CStdString>::const_iterator it = ids.begin() + 1; it != ids.end(); it++)
-      candidates += ", " + *it;
-    CLog::Log(LOGINFO, "GameManager: Multiple game clients found, using %s", ids[0].c_str());
-    CLog::Log(LOGINFO, "GameManager: Candidates were %s", candidates.c_str());
-    CAddonMgr::Get().GetAddon(ids[0], addon, ADDON_GAMEDLL);
+    CLog::Log(LOGINFO, "GameManager: Multiple game clients found, using %s", candidates[0].c_str());
+    CLog::Log(LOGINFO, "GameManager: Candidates were %s", StringUtils::JoinString(candidates, ", ").c_str());
+    CAddonMgr::Get().GetAddon(candidates[0], addon, ADDON_GAMEDLL);
     return boost::dynamic_pointer_cast<CGameClient>(addon);
   }
   return GameClientPtr();
 }
 
-GameSystemType CGameManager::GetSystemType(const CStdString &strFile)
+CStdStringArray CGameManager::GetGameClientIDs(const CFileItem& file) const
 {
+  // Look for a "platform" hint in the file item
+  GamePlatform platformHint = PLATFORM_UNKNOWN;
+  CVariant varPlatform(file.GetProperty("platform"));
+  if (varPlatform.isString())
+    platformHint = GetPlatform(varPlatform.asString());
+
+  // Get the file extension
+  CStdString strFile = file.GetPath();
   CStdString strExtension;
   URIUtils::GetExtension(strFile, strExtension);
-  strExtension.ToLower();
   strExtension.TrimLeft('.');
-
-  // Search our structure
-  for (size_t i = 0; i < sizeof(systemInfo) / sizeof(SystemMapping); i++)
-    if (ContainsExtesion(systemInfo[i].extensions, strExtension))
-      return systemInfo[i].system;
+  strExtension.ToLower();
   
-  // If unfound, search installed add-ons to see if any support the extension
-  for (std::vector<GameClientObject>::const_iterator it = m_gameClients.begin();
-      it != m_gameClients.end(); it++)
+  // TODO: Use platformInfo.extensions as a platform hint, if needed
+
+  CSingleLock lock(m_critSection);
+
+  CStdStringArray candidates; // Container to hold discovered client IDs
+  for (std::vector<GameClientObject>::const_iterator it = m_gameClients.begin(); it != m_gameClients.end(); it++)
   {
-    if (ContainsExtesion(it->extensions, strExtension))
-    {
-      // If the game client supports unknown extensions, but system type from
-      // its <system> tag IS known, then return that system type
-      if (it->systems.size())
-        return it->systems[0];
-      else
-        return SYSTEM_OTHER;
-    }
+    // If a platform hint was given, and a game client specifies a platform
+    // (doesn't omit the <platforms> tag from its addon.xml), and the game
+    // client doesn't list the platform, then filter it out.
+    if ((platformHint != PLATFORM_UNKNOWN) && (!it->paltforms.empty()) &&
+        (std::find(it->paltforms.begin(), it->paltforms.end(), platformHint) == it->paltforms.end()))
+      continue;
+
+    // If the game client lists supported extensions, filter by those as well
+    if ((!strExtension.empty()) &&
+        (std::find(it->extensions.begin(), it->extensions.end(), strExtension) == it->extensions.end()))
+      continue;
+
+    candidates.push_back(it->id);
   }
-  return SYSTEM_UNKNOWN;
+  return candidates;
 }
 
 /* static */
-unsigned int CGameManager::GetPlayers(GameSystemType system)
+GamePlatform CGameManager::GetPlatform(const CStdString &strPlatform)
 {
-  for (size_t i = 0; i < sizeof(ports) / sizeof(PortMapping); i++)
-    if (ports[i].system == system)
+  // Search our structure, platformInfo
+  for (size_t i = 0; i < sizeof(platformInfo) / sizeof(platformInfo[0]); i++)
+    if (strPlatform == platformInfo[i].name)
+      return platformInfo[i].id;
+  return PLATFORM_UNKNOWN;
+}
+
+/* static */
+void CGameManager::TranslatePlatformArray(const CStdStringArray &strPlatforms, GamePlatformArray &vecPlatforms)
+{
+  vecPlatforms.clear();
+  for (CStdStringArray::const_iterator it = strPlatforms.begin(); it != strPlatforms.end(); it++)
+  {
+    GamePlatform id = GetPlatform(*it);
+    if (id != PLATFORM_UNKNOWN)
+      vecPlatforms.push_back(id);
+  }
+}
+
+/* static */
+unsigned int CGameManager::GetPlayers(GamePlatform platform)
+{
+  for (size_t i = 0; i < sizeof(ports) / sizeof(ports[0]); i++)
+    if (ports[i].platform == platform)
       return ports[i].ports;
   return 0; // Unknown
-}
-
-/* static */
-bool CGameManager::ContainsExtesion(const CStdString &strExtensionList, const CStdString &strExt)
-{
-  const char *extList = strExtensionList.c_str();
-  size_t length = strExt.length();
-
-  // Look to see if the extension is present in the extensions list
-  // Favor speed over algorithmic elegance: An extension is found when it
-  // matches and the next character is '|' or '\0' (avoid partial matches
-  // like gb -> gba)
-  while (*extList != '\0')
-  {
-    if (strncmp(strExt.c_str(), extList, length) == 0 &&
-        (extList[length] == '\0' || extList[length] == '|'))
-    {
-      return true;
-    }
-    do
-    {
-      // Need to advance to next '|', but avoid '\0'
-      // Post increment, so if we hit a '|' we end up 1 char past it
-      if (*extList++ == '|')
-        break;
-    } while (*extList != '\0'); // Failing this slides out of the outer while loop as well
-  }
-  return false;
 }

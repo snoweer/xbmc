@@ -30,6 +30,7 @@
 #include "guilib/GUIWindowManager.h"
 #include "guilib/Key.h"
 #include "utils/log.h"
+#include "utils/StringUtils.h"
 
 #define PLAYSPEED_PAUSED    0
 #define PLAYSPEED_NORMAL    1000
@@ -111,7 +112,7 @@ bool CRetroPlayer::OpenFile(const CFileItem& file, const CPlayerOptions& options
   if (!m_gameClient->CanOpen(m_file.GetPath(), true))
   {
     CLog::Log(LOGERROR, "RetroPlayer: Error: Game client %s does not support file", m_gameClient->ID().c_str());
-    CLog::Log(LOGERROR, "RetroPlayer: Valid extensions are: %s", m_gameClient->GetExtensions().c_str());
+    CLog::Log(LOGERROR, "RetroPlayer: Valid extensions are: %s", StringUtils::JoinString(m_gameClient->GetExtensions(), ", ").c_str());
     m_gameClient.reset();
     return false;
   }

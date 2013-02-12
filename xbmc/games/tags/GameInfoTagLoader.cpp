@@ -32,16 +32,16 @@ using namespace GAME_INFO;
 bool CGameInfoTagLoader::Load(const CStdString &strFileName, CGameInfoTag &tag)
 {
   // GetSystemType() is static, but could become non-static in the future
-  GameSystemType system = CGameManager::Get().GetSystemType(strFileName);
+  GamePlatform platform = CGameManager::GetPlatform(strFileName);
   CTag *myTag = NULL;
 
-  switch (system)
+  switch (platform)
   {
-  case SYSTEM_GameBoy:
-  case SYSTEM_GameBoyColor:
+  case PLATFORM_GAMEBOY:
+  case PLATFORM_GAMEBOY_COLOR:
     myTag = new CGameboyTag();
     break;
-  case SYSTEM_GameBoyAdvance:
+  case PLATFORM_GAMEBOY_ADVANCE:
     myTag = new CGBATag();
     break;
   default:

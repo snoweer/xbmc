@@ -574,7 +574,7 @@ void CAddonMgr::RemoveAddon(const CStdString& ID)
     NotifyObservers(ObservableMessageAddons);
   }
   // Let the game manager update the information associated with this addon
-  CGameManager::Get().UnregisterAddon(ID);
+  CGameManager::Get().UnregisterAddonByID(ID);
 }
 
 const char *CAddonMgr::GetTranslatedString(const cp_cfg_element_t *root, const char *tag)

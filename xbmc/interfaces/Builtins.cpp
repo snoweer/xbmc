@@ -591,6 +591,11 @@ int CBuiltins::Execute(const CStdString& execString)
         playOffset = atoi(params[i].Mid(11)) - 1;
         item.SetProperty("playlist_starting_track", playOffset);
       }
+      else if (params[i].Left(9).Equals("platform="))
+      {
+        // A game platform was specified, record the request for when we choose a game client
+        item.SetProperty("platform", params[i].Mid(9));
+      }
     }
 
     if (!item.m_bIsFolder && item.IsPlugin())

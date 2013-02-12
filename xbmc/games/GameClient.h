@@ -96,7 +96,7 @@ namespace ADDON
      */
     const CStdString &GetClientVersion() const { return m_clientVersion; }
 
-    const CStdStringArray &GetSystems() const { return m_systems; }
+    const CStdStringArray &GetPlatforms() const { return m_platforms; }
 
     /**
      * Returns the suggested extensions, as provided by the DLL.
@@ -104,7 +104,7 @@ namespace ADDON
      * \return A string delimited by pipes i.e. "bin|rom|iso". This string can
      *         be empty if the client DLL hasn't implemented it.
      */
-    const CStdString &GetExtensions() const { return m_validExtensions; }
+    const CStdStringArray &GetExtensions() const { return m_validExtensions; }
 
     /**
      * Returns true if the file can be loaded by the client. If the file is on
@@ -174,23 +174,29 @@ namespace ADDON
   private:
     void Initialize();
 
+    /**
+     * Parse a pipe-separated extensions list, returned from the game client,
+     * into an array. The extensions list contains both upper and lower case
+     * extensions; only lower-case extensions are stored in m_validExtensions.
+     */
+    void SetExtensions(const CStdString &strExtensionList);
+
     static bool EnvironmentCallback(unsigned cmd, void *data);
     static DataReceiver::SetPixelFormat_t _SetPixelFormat; // called by EnvironmentCallback()
     static DataReceiver::SetKeyboardCallback_t _SetKeyboardCallback; // called by EnvironmentCallback()
 
-    GameClientDLL m_dll;
-    CStdStringArray m_systems;
-
-    bool       m_bIsInited; // Keep track of whether m_dll.retro_init() has been called
-    bool       m_bIsPlaying; // This is true between retro_load_game() and retro_unload_game()
-    CStdString m_clientName;
-    CStdString m_clientVersion;
-    CStdString m_validExtensions; // Remember, pipe separated, i.e. "bin|rom|iso"
-    bool       m_bAllowVFS; // Allow files with no local path
-    bool       m_bRequireZip; // Don't use VFS for zip files, pass zip path directly
-    double     m_frameRate; // Video framerate
-    double     m_sampleRate; // Audio frequency
-    int        m_region; // Region of the loaded game
+    GameClientDLL   m_dll;
+    CStdStringArray m_platforms;
+    bool            m_bIsInited; // Keep track of whether m_dll.retro_init() has been called
+    bool            m_bIsPlaying; // This is true between retro_load_game() and retro_unload_game()
+    CStdString      m_clientName;
+    CStdString      m_clientVersion;
+    CStdStringArray m_validExtensions;
+    bool            m_bAllowVFS; // Allow files with no local path
+    bool            m_bRequireZip; // Don't use VFS for zip files, pass zip path directly
+    double          m_frameRate; // Video framerate
+    double          m_sampleRate; // Audio frequency
+    int             m_region; // Region of the loaded game
 
     CCriticalSection m_critSection;
     bool m_rewindSupported;

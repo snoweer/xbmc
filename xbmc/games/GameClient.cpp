@@ -45,11 +45,21 @@ CGameClient::CGameClient(const AddonProps &props) : CAddon(props)
 CGameClient::CGameClient(const cp_extension_t *ext) : CAddon(ext)
 {
   Initialize();
+
+  m_platforms.clear();
   if (ext)
   {
-    // Extensions list may be comma separated
-    CStdString systems = CAddonMgr::Get().GetExtValue(ext->configuration, "system@name");
-    StringUtils::SplitString(systems, ",", m_systems);
+    // Platforms list is pipe-separated
+    CStdString strPlatforms = CAddonMgr::Get().GetExtValue(ext->configuration, "platforms");
+    CStdStringArray platforms;
+    StringUtils::SplitString(strPlatforms, "|", platforms);
+
+    for (CStdStringArray::iterator it = platforms.begin(); it != platforms.end(); it++)
+    {
+      it->Trim();
+      if (!it->empty())
+        m_platforms.push_back(*it);
+    }
   }
 
   // If library attribute isn't present, look for a system-dependent one
@@ -97,7 +107,7 @@ bool CGameClient::Init()
   m_dll.retro_get_system_info(&info);
   m_clientName      = info.library_name ? info.library_name : "Unknown";
   m_clientVersion   = info.library_version ? info.library_version : "v0.0";
-  m_validExtensions = info.valid_extensions ? info.valid_extensions : "";
+  SetExtensions(info.valid_extensions ? info.valid_extensions : ""); // Set m_validExtensions
   m_bAllowVFS       = !info.need_fullpath;
   m_bRequireZip     = info.block_extract;
   CLog::Log(LOGINFO, "GameClient: Loaded %s core at version %s", m_clientName.c_str(), m_clientVersion.c_str());
@@ -113,7 +123,7 @@ bool CGameClient::Init()
   CLog::Log(LOGERROR, "GameClient: ------------------------------------");
   CLog::Log(LOGERROR, "GameClient: Loaded DLL for %s", ID().c_str());
   CLog::Log(LOGERROR, "GameClient: Client: %s at version %s", m_clientName.c_str(), m_clientVersion.c_str());
-  CLog::Log(LOGERROR, "GameClient: Valid extensions: %s", m_validExtensions.c_str());
+  CLog::Log(LOGERROR, "GameClient: Valid extensions: %s", StringUtils::JoinString(m_validExtensions, ", ").c_str());
   CLog::Log(LOGERROR, "GameClient: Allow VFS: %s, require zip (block extract): %s", m_bAllowVFS ? "yes" : "no", m_bRequireZip ? "yes" : "no");
   CLog::Log(LOGERROR, "GameClient: ------------------------------------");
 
@@ -160,15 +170,7 @@ bool CGameClient::CanOpen(const CStdString &filePath, bool checkExtension /* = t
     URIUtils::GetExtension(filePath, strExtension);
     strExtension.TrimLeft(".");
 
-    CStdStringArray parts;
-    StringUtils::SplitString(m_validExtensions, "|", parts);
-
-    for (CStdStringArray::iterator it = parts.begin(); it != parts.end(); it++)
-    {
-      if (strExtension.Equals(*it))
-        return true; // Extension found
-    }
-    return false; // Extension not found
+    return std::find(m_validExtensions.begin(), m_validExtensions.end(), strExtension) != m_validExtensions.end();
   }
   return true; // DLL wasn't kind enough to provide extensions, assume the best
 }
@@ -447,6 +449,22 @@ void CGameClient::Reset()
   }
 }
 
+void CGameClient::SetExtensions(const CStdString &strExtensionList)
+{
+  m_validExtensions.clear();
+  CStdStringArray extensions;
+  StringUtils::SplitString(strExtensionList, "|", extensions);
+  for (CStdStringArray::iterator it = extensions.begin(); it != extensions.end(); it++)
+  {
+    if (it->empty())
+      continue;
+    it->ToLower();
+    if (std::find(m_validExtensions.begin(), m_validExtensions.end(), *it) == m_validExtensions.end())
+      m_validExtensions.push_back(*it);
+  }
+}
+
+/* static */
 bool CGameClient::EnvironmentCallback(unsigned int cmd, void *data)
 {
   // Note: SHUTDOWN doesn't use data and GET_SYSTEM_DIRECTORY uses data as a return path

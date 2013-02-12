@@ -918,8 +918,10 @@ bool CFileItem::IsGame() const
   if (HasVideoInfoTag()) return false;
   if (HasMusicInfoTag()) return false;
   if (HasPictureInfoTag()) return false;
-  
-  return CGameManager::Get().GetSystemType(m_strPath) != SYSTEM_UNKNOWN;
+
+  // Ask the game clients if any support this file. If none do, the extension
+  // will be screened against the list of extensions in GameManager.cpp.
+  return !CGameManager::Get().GetGameClientIDs(*this).empty();
 }
 
 bool CFileItem::IsKaraoke() const
