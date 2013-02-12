@@ -39,6 +39,8 @@ struct PlatformMap
   const char   *extensions;
 };
 
+// Lookups are made using comparisons between case-insensitive alphanumeric
+// strings. "CD-i" will match "CDi", "CD_I" and "CD I"
 static const PlatformMap platformInfo[] =
 {
   { PLATFORM_UNKNOWN,              "Unknown",              "" },
@@ -275,9 +277,40 @@ GamePlatform CGameManager::GetPlatform(const CStdString &strPlatform)
 {
   // Search our structure, platformInfo
   for (size_t i = 0; i < sizeof(platformInfo) / sizeof(platformInfo[0]); i++)
-    if (strPlatform == platformInfo[i].name)
+    if (SanitizedEquals(strPlatform.c_str(), platformInfo[i].name))
       return platformInfo[i].id;
   return PLATFORM_UNKNOWN;
+}
+
+#define IS_ALPHANUMERIC(c) (('a' <= (c) && (c) <= 'z') || ('A' <= (c) && (c) <= 'Z') || ('0' <= (c) && (c) <= '0'))
+#define LOWER(c) (('A' <= (c) && (c) <= 'Z') ? (c) - 'A' + 'a' : (c))
+
+/* static */
+bool CGameManager::SanitizedEquals(const char *str1, const char *str2)
+{
+  // Sanity check
+  if (!str1 || !str2)
+    return false;
+
+  // Break at the first null character
+  for (; *str1 && *str2; )
+  {
+    // Advance to the next alphanumeric character
+    while (*str1 && !IS_ALPHANUMERIC(*str1))
+      str1++;
+    while (*str2 && !IS_ALPHANUMERIC(*str2))
+      str2++;
+
+    // If they differ, we're done here, otherwise increment and continue
+    if (LOWER(*str1) != LOWER(*str2))
+      return false;
+
+    str1++;
+    str2++;
+  }
+
+  // Final test, return true if these are both null
+  return *str1 == *str2;
 }
 
 /* static */

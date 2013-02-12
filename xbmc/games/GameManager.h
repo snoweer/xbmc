@@ -176,6 +176,11 @@ public:
   static unsigned int GetPlayers(GamePlatform platform);
 
 private:
+  /**
+   * Strip all non-alphanumeric characters and compare strings case-insensitive.
+   */
+  static bool SanitizedEquals(const char *str1, const char *str2);
+
   static CGameManager m_gameManagerInstance;
 
   /**
