@@ -69,8 +69,8 @@ bool CGBATag::Read(const CStdString& strFile)
     return false;
   }
 
-  // Name: $a0, 12 bytes
-  m_gameInfoTag.SetName(std::string(data + 0xa0, 12));
+  // Title: $a0, 12 bytes
+  m_gameInfoTag.SetTitle(std::string(data + 0xa0, 12));
 
   // ID: $ac, 4 bytes
   m_gameInfoTag.SetID(std::string(data + 0xac, 4));

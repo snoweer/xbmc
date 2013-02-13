@@ -52,9 +52,9 @@ namespace GAME_INFO
     const CStdString& GetPlatform() const { return m_strPlatform; }
     void SetPlatform(const CStdString& strPlatform) { m_strPlatform = strPlatform; }
     
-    // Name
-    const CStdString& GetName() const { return m_strName; }
-    void SetName(const CStdString& strName) { m_strName = strName; }
+    // Title
+    const CStdString& GetTitle() const { return m_strName; }
+    void SetTitle(const CStdString& strName) { m_strName = strName; }
 
     // Game Code (ID)
     const CStdString& GetID() const { return m_strCode; }

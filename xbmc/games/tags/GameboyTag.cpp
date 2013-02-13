@@ -54,7 +54,7 @@ bool CGameboyTag::Read(const CStdString& strFile)
     m_gameInfoTag.SetPlatform("Game Boy");
   
   
-  // Name: $134, 15 bytes
+  // Title: $134, 15 bytes
   for (unsigned int i = 0x134; i < 0x134 + 15; i++)
   {
     if ((0 < data[i] && data[i] < 32) || 126 < data[i]) // zero is ok
@@ -63,7 +63,7 @@ bool CGameboyTag::Read(const CStdString& strFile)
       return false;
     }
   }
-  m_gameInfoTag.SetName(CStdString(std::string(data + 0x134, 15)).Trim());
+  m_gameInfoTag.SetTitle(CStdString(std::string(data + 0x134, 15)).Trim());
 
   // Publisher: $144, 2 bytes
   m_gameInfoTag.SetPublisher(CGameboyTag::TranslatePublisher(data + 0x144));

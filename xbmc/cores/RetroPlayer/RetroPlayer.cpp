@@ -84,7 +84,7 @@ bool CRetroPlayer::OpenFile(const CFileItem& file, const CPlayerOptions& options
     CLog::Log(LOGDEBUG, "RetroPlayer: Game tag loaded");
     CLog::Log(LOGDEBUG, "RetroPlayer: URL: %s", tag->GetURL().c_str());
     CLog::Log(LOGDEBUG, "RetroPlayer: Platform: %s", tag->GetPlatform().c_str());
-    CLog::Log(LOGDEBUG, "RetroPlayer: Name: %s", tag->GetName().c_str());
+    CLog::Log(LOGDEBUG, "RetroPlayer: Title: %s", tag->GetTitle().c_str());
     CLog::Log(LOGDEBUG, "RetroPlayer: Game Code: %s", tag->GetID().c_str());
     CLog::Log(LOGDEBUG, "RetroPlayer: Region: %s", tag->GetRegion().c_str());
     CLog::Log(LOGDEBUG, "RetroPlayer: Publisher: %s", tag->GetPublisher().c_str());
