@@ -536,6 +536,12 @@ int CBuiltins::Execute(const CStdString& execString)
           // Pass the script name (params[0]) and all the parameters
           // (params[1] ... params[x]) separated by a comma to RunScript
           cmd.Format("RunScript(%s)", StringUtils::JoinString(params, ","));
+        else if (addon->Type() == ADDON_GAMEDLL && params.size() >= 2)
+        {
+          CFileItem item(params[1], false);
+          item.SetProperty("gameclient", params[0]);
+          return g_application.PlayMedia(item);
+        }
 
         return Execute(cmd);
       }
@@ -595,6 +601,11 @@ int CBuiltins::Execute(const CStdString& execString)
       {
         // A game platform was specified, record the request for when we choose a game client
         item.SetProperty("platform", params[i].Mid(9));
+      }
+      else if (params[i].Left(11).Equals("gameclient="))
+      {
+        // A game client ID was specified
+        item.SetProperty("gameclient", params[i].Mid(11));
       }
     }
 

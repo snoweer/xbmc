@@ -219,7 +219,8 @@ void CGameManager::UnregisterAddonByID(const CStdString &ID)
 
 GameClientPtr CGameManager::GetGameClient(const CFileItem& file) const
 {
-  CStdStringArray candidates = GetGameClientIDs(file);
+  CStdStringArray candidates;
+  GetGameClientIDs(file, candidates);
 
   AddonPtr addon;
   if (candidates.size() == 1)
@@ -237,8 +238,21 @@ GameClientPtr CGameManager::GetGameClient(const CFileItem& file) const
   return GameClientPtr();
 }
 
-CStdStringArray CGameManager::GetGameClientIDs(const CFileItem& file) const
+void CGameManager::GetGameClientIDs(const CFileItem& file, CStdStringArray &candidates) const
 {
+  // This property may be set by Addons.ExecuteAddon() or XBMC.PlayMedia()
+  if (!file.GetProperty("gameclient").empty())
+  {
+    CStdString id = file.GetProperty("gameclient").asString();
+    for (std::vector<GameClientObject>::const_iterator it = m_gameClients.begin(); it != m_gameClients.end(); it++)
+    {
+      if (it->id == id)
+        { candidates.push_back(id); break; }
+    }
+    // If the game client isn't installed, it's not a valid candidate
+    return;
+  }
+
   // Look for a "platform" hint in the file item
   GamePlatform platformHint = PLATFORM_UNKNOWN;
   CVariant varPlatform(file.GetProperty("platform"));
@@ -256,7 +270,6 @@ CStdStringArray CGameManager::GetGameClientIDs(const CFileItem& file) const
 
   CSingleLock lock(m_critSection);
 
-  CStdStringArray candidates; // Container to hold discovered client IDs
   for (std::vector<GameClientObject>::const_iterator it = m_gameClients.begin(); it != m_gameClients.end(); it++)
   {
     // If a platform hint was given, and a game client specifies a platform
@@ -273,7 +286,6 @@ CStdStringArray CGameManager::GetGameClientIDs(const CFileItem& file) const
 
     candidates.push_back(it->id);
   }
-  return candidates;
 }
 
 /* static */

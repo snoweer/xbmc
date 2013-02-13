@@ -915,13 +915,17 @@ bool CFileItem::IsAudio() const
 bool CFileItem::IsGame() const
 {
   if (HasGameInfoTag()) return true;
+  // This field may be set if created by Addons.ExecuteAddon() or XBMC.PlayMedia()
+  if (!GetProperty("gameclient").empty()) return true;
   if (HasVideoInfoTag()) return false;
   if (HasMusicInfoTag()) return false;
   if (HasPictureInfoTag()) return false;
 
   // Ask the game clients if any support this file. If none do, the extension
   // will be screened against the list of extensions in GameManager.cpp.
-  return !CGameManager::Get().GetGameClientIDs(*this).empty();
+  CStdStringArray clients;
+  CGameManager::Get().GetGameClientIDs(*this, clients);
+  return !clients.empty();
 }
 
 bool CFileItem::IsKaraoke() const

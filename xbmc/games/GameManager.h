@@ -152,7 +152,7 @@ public:
    * Resolve a file item to a list of game client IDs. GetGameClient() selects
    * from this list.
    */
-  CStdStringArray GetGameClientIDs(const CFileItem& file) const;
+  void GetGameClientIDs(const CFileItem& file, CStdStringArray &candidates) const;
 
   /**
    * Resolve a platform name into an ID. See struct platformInfo in
