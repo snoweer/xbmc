@@ -52,11 +52,11 @@ void CRetroPlayerVideo::GoForth(double framerate, bool fullscreen)
   Create();
 }
 
-void CRetroPlayerVideo::StopThread()
+void CRetroPlayerVideo::StopThread(bool bWait /*= true*/)
 {
   m_bStop = true;
   m_frameEvent.Set();
-  CThread::StopThread();
+  CThread::StopThread(bWait);
 }
 
 void CRetroPlayerVideo::Process()
@@ -67,10 +67,10 @@ void CRetroPlayerVideo::Process()
   if (!m_dllSwScale.Load())
     return;
 
-  // TODO: Should we lock m_bStop to prevent a race between this and m_frameEvent.Wait()?
   while (!m_bStop)
   {
-    m_frameEvent.Wait();
+    // 1s should be a good failsafe if the event isn't triggered (shouldn't happen)
+    m_frameEvent.WaitMSec(1000);
     if (m_bStop)
       break;
 

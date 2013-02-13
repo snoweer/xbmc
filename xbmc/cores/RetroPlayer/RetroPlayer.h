@@ -138,6 +138,5 @@ private:
 
   CFileItem      m_file;
   CPlayerOptions m_PlayerOptions;
-  volatile bool  m_bAbortRequest;
-           int   m_playSpeed; // Normal play speed is PLAYSPEED_NORMAL (1000)
+  int            m_playSpeed; // Normal play speed is PLAYSPEED_NORMAL (1000)
 };

@@ -51,7 +51,6 @@ retro_keyboard_event_t CRetroPlayer::m_keyboardCallback = NULL;
 
 CRetroPlayer::CRetroPlayer(IPlayerCallback& callback) :
     IPlayer(callback), CThread("RetroPlayer"),
-    m_bAbortRequest(false),
     m_playSpeed(PLAYSPEED_NORMAL)
 {
 }
@@ -93,7 +92,6 @@ bool CRetroPlayer::OpenFile(const CFileItem& file, const CPlayerOptions& options
     CLog::Log(LOGDEBUG, "RetroPlayer: ---------------------------------------");
   }
 
-  m_bAbortRequest = false;
   m_file = file;
   m_PlayerOptions = options;
 
@@ -142,15 +140,18 @@ bool CRetroPlayer::CloseFile()
   // SetPlaySpeed(DVD_PLAYSPEED_NORMAL);
 
   // Set the abort request so that other threads can finish up
-  m_bAbortRequest = true;
+  m_bStop = true;
+
+  // Set m_video.m_bStop to false before triggering the event
+  m_video.StopThread(false);
   m_pauseEvent.Set();
 
-  // wait for the main thread to finish up
-  // since this main thread cleans up all other resources and threads
-  // we are done after the StopThread call
+  // Wait for the main thread to finish up. Since this main thread cleans up
+  // all other resources and threads we are done after the StopThread call.
   StopThread(true);
 
   g_renderManager.UnInit();
+
   CLog::Log(LOGDEBUG, "RetroPlayer: File closed");
   return true;
 }
@@ -196,7 +197,7 @@ void CRetroPlayer::Process()
   double nextpts = CDVDClock::GetAbsoluteClock() + frametime;
 
   CLog::Log(LOGDEBUG, "RetroPlayer: Beginning loop de loop");
-  while (!m_bAbortRequest)
+  while (!m_bStop)
   {
     if (m_playSpeed <= PLAYSPEED_PAUSED)
     {
@@ -223,8 +224,8 @@ void CRetroPlayer::Process()
     nextpts += frametime * PLAYSPEED_NORMAL / m_playSpeed;
   }
 
-  m_video.StopThread();
-  m_audio.StopThread();
+  m_video.StopThread(true);
+  m_audio.StopThread(true);
   m_input.Finish();
   m_bStop = true;
 }
@@ -241,7 +242,8 @@ void CRetroPlayer::OnVideoFrame(const void *data, unsigned width, unsigned heigh
 void CRetroPlayer::OnAudioSample(int16_t left, int16_t right)
 {
   int16_t buf[2] = {left, right};
-  OnAudioSampleBatch(buf, 1);
+  // Too many small allocations
+  //OnAudioSampleBatch(buf, 1);
 }
 
 /* static */

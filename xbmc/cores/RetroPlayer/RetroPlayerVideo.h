@@ -50,7 +50,8 @@ public:
    * Begin doing what a RetroPlayerVideo does best.
    */
   void GoForth(double framerate, bool fullscreen);
-  void StopThread();
+
+  void StopThread(bool bWait = true);
 
   /**
    * Send a video frame to be rendered by this class. The pixel format is
