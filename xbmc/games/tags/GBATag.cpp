@@ -78,7 +78,7 @@ bool CGBATag::Read(const CStdString& strFile)
   // Publisher: $b0, 2 bytes
   m_gameInfoTag.SetPublisher(CGameboyTag::TranslatePublisher(data + 0xb0));
 
-  m_gameInfoTag.SetPlatform("GameBoy Advance");
+  m_gameInfoTag.SetPlatform("Game Boy Advance");
   m_gameInfoTag.SetLoaded(true);
   return true;
 }

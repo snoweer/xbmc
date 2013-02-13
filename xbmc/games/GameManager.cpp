@@ -22,9 +22,10 @@
 
 #include "GameManager.h"
 #include "addons/AddonManager.h"
+#include "games/tags/GameInfoTag.h"
+#include "threads/SingleLock.h"
 #include "utils/log.h"
 #include "utils/StringUtils.h"
-#include "threads/SingleLock.h"
 #include "utils/URIUtils.h"
 #include "utils/Variant.h"
 
@@ -255,9 +256,8 @@ void CGameManager::GetGameClientIDs(const CFileItem& file, CStdStringArray &cand
 
   // Look for a "platform" hint in the file item
   GamePlatform platformHint = PLATFORM_UNKNOWN;
-  CVariant varPlatform(file.GetProperty("platform"));
-  if (varPlatform.isString())
-    platformHint = GetPlatformByName(varPlatform.asString());
+  if (file.GetGameInfoTag())
+    platformHint = GetPlatformByName(file.GetGameInfoTag()->GetPlatform());
 
   // Get the file extension
   CStdString strFile = file.GetPath();
@@ -291,10 +291,13 @@ void CGameManager::GetGameClientIDs(const CFileItem& file, CStdStringArray &cand
 /* static */
 GamePlatform CGameManager::GetPlatformByName(const CStdString &strPlatform)
 {
-  // Search our structure, platformInfo
+  if (strPlatform.empty())
+    PLATFORM_UNKNOWN;
+
   for (size_t i = 0; i < sizeof(platformInfo) / sizeof(platformInfo[0]); i++)
     if (SanitizedEquals(strPlatform.c_str(), platformInfo[i].name))
       return platformInfo[i].id;
+
   return PLATFORM_UNKNOWN;
 }
 

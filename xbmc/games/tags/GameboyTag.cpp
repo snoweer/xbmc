@@ -47,11 +47,11 @@ bool CGameboyTag::Read(const CStdString& strFile)
 
   // Platform
   if (data[0x143] & 0x80)
-    m_gameInfoTag.SetPlatform("GameBoy Color");
-  else if (data[0x146] == 0x03)
-    m_gameInfoTag.SetPlatform("Super GameBoy");
+    m_gameInfoTag.SetPlatform("Game Boy Color");
+  //else if (data[0x146] == 0x03)
+  //  m_gameInfoTag.SetPlatform("Super GameBoy");
   else
-    m_gameInfoTag.SetPlatform("GameBoy");
+    m_gameInfoTag.SetPlatform("Game Boy");
   
   
   // Name: $134, 15 bytes

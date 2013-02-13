@@ -55,6 +55,7 @@
 #include "Util.h"
 #include "URL.h"
 #include "music/MusicDatabase.h"
+#include "games/tags/GameInfoTag.h"
 
 #include "filesystem/PluginDirectory.h"
 #ifdef HAS_FILESYSTEM_RAR
@@ -600,7 +601,7 @@ int CBuiltins::Execute(const CStdString& execString)
       else if (params[i].Left(9).Equals("platform="))
       {
         // A game platform was specified, record the request for when we choose a game client
-        item.SetProperty("platform", params[i].Mid(9));
+        item.GetGameInfoTag()->SetPlatform(params[i].Mid(9));
       }
       else if (params[i].Left(11).Equals("gameclient="))
       {
