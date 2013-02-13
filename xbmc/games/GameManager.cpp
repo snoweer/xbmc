@@ -33,15 +33,19 @@ using namespace GAME_INFO;
 
 struct PlatformMap
 {
-  GamePlatform id;
-  const char   *name;
-  // Extensions must be unique to the platform (e.g. no zip). Currently unused
-  const char   *extensions;
+  GamePlatform    id;
+  const char      *name;
+  // Extensions must be unique to the platform (e.g. no zip)
+  const char      *extensions;
+  // Initially empty, this cache is populated with parsed extensions on the
+  // first run of GetPlatformByExtension(). This also allows runtime
+  // modifications through advanced settings.
+  CStdStringArray vecExtensions;
 };
 
 // Lookups are made using comparisons between case-insensitive alphanumeric
 // strings. "CD-i" will match "CDi", "CD_I" and "CD I"
-static const PlatformMap platformInfo[] =
+static PlatformMap platformInfo[] =
 {
   { PLATFORM_UNKNOWN,              "Unknown",              "" },
   { PLATFORM_OTHER,                "Other",                "" },
@@ -239,7 +243,7 @@ CStdStringArray CGameManager::GetGameClientIDs(const CFileItem& file) const
   GamePlatform platformHint = PLATFORM_UNKNOWN;
   CVariant varPlatform(file.GetProperty("platform"));
   if (varPlatform.isString())
-    platformHint = GetPlatform(varPlatform.asString());
+    platformHint = GetPlatformByName(varPlatform.asString());
 
   // Get the file extension
   CStdString strFile = file.GetPath();
@@ -273,13 +277,50 @@ CStdStringArray CGameManager::GetGameClientIDs(const CFileItem& file) const
 }
 
 /* static */
-GamePlatform CGameManager::GetPlatform(const CStdString &strPlatform)
+GamePlatform CGameManager::GetPlatformByName(const CStdString &strPlatform)
 {
   // Search our structure, platformInfo
   for (size_t i = 0; i < sizeof(platformInfo) / sizeof(platformInfo[0]); i++)
     if (SanitizedEquals(strPlatform.c_str(), platformInfo[i].name))
       return platformInfo[i].id;
   return PLATFORM_UNKNOWN;
+}
+
+/* static */
+GamePlatform CGameManager::GetPlatformByExtension(CStdString strExtension)
+{
+  GamePlatform platform = PLATFORM_UNKNOWN;
+  strExtension.TrimLeft(".");
+  strExtension.ToLower();
+
+  // The first run through, we parse advanced settings for modifications to our
+  // extension lists.
+  static bool firstRun = true;
+  
+  for (size_t i = 0; i < sizeof(platformInfo) / sizeof(platformInfo[0]); i++)
+  {
+    if (firstRun)
+    {
+      // Parse the extensions (if any) and cache in vecExtensions
+      if (platformInfo[i].extensions[0] != '\0')
+        StringUtils::SplitString(platformInfo[i].extensions, "|", platformInfo[i].vecExtensions);
+
+      // TODO: Check advanced settings for modifications to the list
+    }
+
+    if (platformInfo[i].vecExtensions.empty())
+      continue;
+
+    if (std::find(platformInfo[i].vecExtensions.begin(), platformInfo[i].vecExtensions.end(), strExtension) !=
+        platformInfo[i].vecExtensions.end())
+    {
+      platform = platformInfo[i].id;
+      break;
+    }
+  }
+
+  firstRun = false; // don't need to parse again
+  return platform;
 }
 
 #define IS_ALPHANUMERIC(c) (('a' <= (c) && (c) <= 'z') || ('A' <= (c) && (c) <= 'Z') || ('0' <= (c) && (c) <= '0'))
@@ -319,7 +360,7 @@ void CGameManager::TranslatePlatformArray(const CStdStringArray &strPlatforms, G
   vecPlatforms.clear();
   for (CStdStringArray::const_iterator it = strPlatforms.begin(); it != strPlatforms.end(); it++)
   {
-    GamePlatform id = GetPlatform(*it);
+    GamePlatform id = GetPlatformByName(*it);
     if (id != PLATFORM_UNKNOWN)
       vecPlatforms.push_back(id);
   }

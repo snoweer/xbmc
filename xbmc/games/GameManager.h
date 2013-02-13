@@ -156,10 +156,18 @@ public:
 
   /**
    * Resolve a platform name into an ID. See struct platformInfo in
-   * GameManager.cpp. If the name isn't recognized as a valid game platform,
-   * PLATFORM_UNKNOWN is returned. 
+   * GameManager.cpp. The comparison is performed case-, space- and
+   * punctuation-insensitive. If the name isn't recognized as a valid game
+   * platform, PLATFORM_UNKNOWN is returned. 
    */
-  static GamePlatform GetPlatform(const CStdString &strPlatform);
+  static GamePlatform GetPlatformByName(const CStdString &strPlatform);
+
+  /**
+   * Resolve a known extension name into an ID. If the extension isn't listed
+   * in struct platformInfo, PLATFORM_UNKOWN is returned. If the extension is
+   * valid for more than 1 platform (zip, bin), PLATFORM_UNKOWN is returned.
+   */
+  static GamePlatform GetPlatformByExtension(CStdString strExtension);
 
   /**
    * Generate a GamePlatformArray from an array of strings. If a string isn't

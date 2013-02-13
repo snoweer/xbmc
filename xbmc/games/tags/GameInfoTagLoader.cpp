@@ -31,8 +31,7 @@ using namespace GAME_INFO;
 
 bool CGameInfoTagLoader::Load(const CStdString &strFileName, CGameInfoTag &tag)
 {
-  // GetSystemType() is static, but could become non-static in the future
-  GamePlatform platform = CGameManager::GetPlatform(strFileName);
+  GamePlatform platform = CGameManager::GetPlatformByExtension(URIUtils::GetExtension(strFileName));
   CTag *myTag = NULL;
 
   switch (platform)
