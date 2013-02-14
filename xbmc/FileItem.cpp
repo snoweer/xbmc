@@ -812,6 +812,8 @@ bool CFileItem::IsVideo() const
   if (HasMusicInfoTag()) return false;
   if (HasPictureInfoTag()) return false;
   if (IsPVRRecording())  return true;
+  if (HasGameInfoTag()) return false;
+  if (!GetProperty("gameclient").asString().empty()) return false;
 
   if (IsHDHomeRun() || IsTuxBox() || URIUtils::IsDVD(m_strPath) || IsSlingbox())
     return true;
@@ -889,6 +891,8 @@ bool CFileItem::IsAudio() const
   if (HasMusicInfoTag()) return true;
   if (HasVideoInfoTag()) return false;
   if (HasPictureInfoTag()) return false;
+  if (HasGameInfoTag()) return false;
+  if (!GetProperty("gameclient").asString().empty()) return false;
   if (IsCDDA()) return true;
   if (!m_bIsFolder && IsLastFM()) return true;
 

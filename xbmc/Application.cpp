@@ -5094,7 +5094,7 @@ bool CApplication::ExecuteXBMCAction(std::string actionStr)
     }
     else
 #endif
-    if (item.IsAudio() || item.IsVideo())
+    if (item.IsAudio() || item.IsVideo() || item.IsGame())
     { // an audio or video file
       PlayFile(item);
     }
