@@ -107,15 +107,8 @@ bool CRetroPlayer::OpenFile(const CFileItem& file, const CPlayerOptions& options
     return false;
   }
   CLog::Log(LOGINFO, "RetroPlayer: Using game client %s at version %s", m_gameClient->GetClientName().c_str(), m_gameClient->GetClientVersion().c_str());
-  if (!m_gameClient->CanOpen(m_file.GetPath(), true))
-  {
-    CLog::Log(LOGERROR, "RetroPlayer: Error: Game client %s does not support file", m_gameClient->ID().c_str());
-    CLog::Log(LOGERROR, "RetroPlayer: Valid extensions are: %s", StringUtils::JoinString(m_gameClient->GetExtensions(), ", ").c_str());
-    m_gameClient.reset();
-    return false;
-  }
   m_retroPlayer = this;
-  if (!m_gameClient->OpenFile(file, m_callbacks))
+  if (!m_gameClient->OpenFile(m_file, m_callbacks))
   {
     CLog::Log(LOGERROR, "RetroPlayer: Error opening file");
     m_gameClient.reset();
