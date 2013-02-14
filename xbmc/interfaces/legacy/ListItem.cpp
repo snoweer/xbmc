@@ -494,6 +494,8 @@ namespace XBMCAddon
             item->GetGameInfoTag()->SetRegion(value);
           else if (key == "publisher")
             item->GetGameInfoTag()->SetPublisher(value);
+          else if (key == "gameclient")
+            item->SetProperty("gameclient", value);
         }
       }
     } // end ListItem::setInfo

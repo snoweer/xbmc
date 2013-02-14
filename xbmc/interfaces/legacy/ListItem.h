@@ -220,6 +220,7 @@ namespace XBMCAddon
        *     platform      : string (Atari 2600) - see GameManager.cpp for a list of platforms
        *     region        : string (USA and Canada) - in the future, this might be a single letter (U / J)
        *     publisher     : string (Nintendo)
+       *     gameclient    : string (gameclient.snes9x.next)
        * 
        * example:
        *   - self.list.getSelectedItem().setInfo('video', { 'Genre': 'Comedy' })\n
