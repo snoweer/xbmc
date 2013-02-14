@@ -1327,6 +1327,11 @@ void CFileItem::FillInDefaultIcon()
       {
         SetIconImage("DefaultScript.png");
       }
+      else if ( IsGame() )
+      {
+        // TODO
+        SetIconImage("DefaultFile.png");
+      }
       else
       {
         // default icon for unknown file type
