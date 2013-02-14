@@ -260,12 +260,10 @@ void CGameManager::GetGameClientIDs(const CFileItem& file, CStdStringArray &cand
     platformHint = GetPlatformByName(file.GetGameInfoTag()->GetPlatform());
 
   // Get the file extension
-  CStdString strFile = file.GetPath();
-  CStdString strExtension;
-  URIUtils::GetExtension(strFile, strExtension);
+  CStdString strExtension(URIUtils::GetExtension(file.GetPath()));
   strExtension.TrimLeft('.');
   strExtension.ToLower();
-  
+
   // TODO: Use platformInfo.extensions as a platform hint, if needed
 
   CSingleLock lock(m_critSection);
