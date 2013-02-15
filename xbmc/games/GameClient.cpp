@@ -224,21 +224,13 @@ bool CGameClient::GetEffectiveRomPath(const CStdString &zipPath, const CStdStrin
   CStdString strUrl;
   URIUtils::CreateArchivePath(strUrl, "zip", zipPath, "");
 
-  // No mask, because we can't specify an array of file extensions
   CFileItemList itemList;
-  if (!CDirectory::GetDirectory(strUrl, itemList, /* mask = */ "", DIR_FLAG_READ_CACHE | DIR_FLAG_NO_FILE_INFO))
-    return false;
-
-  for (int i = 0; i < itemList.Size(); i++)
+  if (CDirectory::GetDirectory(strUrl, itemList, StringUtils::JoinString(validExts, "|"),
+    DIR_FLAG_READ_CACHE | DIR_FLAG_NO_FILE_INFO) && itemList.Size())
   {
-    CStdString strZippedExt(URIUtils::GetExtension(itemList[i]->GetPath()));
-    strZippedExt.TrimLeft(".");
-    strZippedExt.ToLower();
-    if (std::find(validExts.begin(), validExts.end(), strZippedExt) != validExts.end())
-    {
-      effectivePath = itemList[i]->GetPath();
-      return true;
-    }
+    // Use the first file discovered
+    effectivePath = itemList[0]->GetPath();
+    return true;
   }
   return false;
 }
@@ -248,7 +240,6 @@ bool CGameClient::IsExtensionValid(const CStdString &ext) const
   if (m_validExtensions.empty())
     return true; // Be optimistic :)
   CStdString ext2(ext);
-  ext2.TrimLeft(".");
   ext2.ToLower();
   return std::find(m_validExtensions.begin(), m_validExtensions.end(), ext2) != m_validExtensions.end();
 }
@@ -339,7 +330,7 @@ bool CGameClient::Init()
   CLog::Log(LOGINFO, "GameClient: ------------------------------------");
   CLog::Log(LOGINFO, "GameClient: Loaded DLL for %s", ID().c_str());
   CLog::Log(LOGINFO, "GameClient: Client: %s at version %s", m_clientName.c_str(), m_clientVersion.c_str());
-  CLog::Log(LOGINFO, "GameClient: Valid extensions: %s", StringUtils::JoinString(m_validExtensions, ", ").c_str());
+  CLog::Log(LOGINFO, "GameClient: Valid extensions: %s", info.valid_extensions ? info.valid_extensions : "-");
   CLog::Log(LOGINFO, "GameClient: Allow VFS: %s, require zip (block extract): %s", m_bAllowVFS ? "yes" : "no", m_bRequireZip ? "yes" : "no");
   CLog::Log(LOGINFO, "GameClient: ------------------------------------");
 
@@ -627,6 +618,7 @@ void CGameClient::SetExtensions(const CStdString &strExtensionList)
     if (it->empty())
       continue;
     it->ToLower();
+    (*it) = "." + (*it);
     if (std::find(m_validExtensions.begin(), m_validExtensions.end(), *it) == m_validExtensions.end())
       m_validExtensions.push_back(*it);
   }

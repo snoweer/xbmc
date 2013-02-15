@@ -3129,7 +3129,7 @@ bool CFileItem::LoadGameTag()
   // Load tag from file
   CLog::Log(LOGDEBUG, "%s: loading tag information for file: %s", __FUNCTION__, m_strPath.c_str());
   
-  if (CGameInfoTagLoader::Load(m_strPath, *GetGameInfoTag()))
+  if (CGameInfoTagLoader::Get().Load(m_strPath, *GetGameInfoTag()))
     return true;
 
   return false;
