@@ -617,8 +617,14 @@ void CGameClient::SetExtensions(const CStdString &strExtensionList)
   {
     if (it->empty())
       continue;
+
+    // Zip crashes EVERY emulator I've tried so far. Skip it.
+    if (it->Equals("zip"))
+      continue;
+
     it->ToLower();
     (*it) = "." + (*it);
+
     if (std::find(m_validExtensions.begin(), m_validExtensions.end(), *it) == m_validExtensions.end())
       m_validExtensions.push_back(*it);
   }
