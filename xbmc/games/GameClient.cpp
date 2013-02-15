@@ -35,6 +35,7 @@
 #include <boost/shared_ptr.hpp>
 
 using namespace ADDON;
+using namespace XFILE;
 
 
 bool CGameClient::IRetroStrategy::GetGameInfo(retro_game_info &info) const
@@ -55,7 +56,7 @@ bool CGameClient::IRetroStrategy::GetGameInfo(retro_game_info &info) const
     int64_t length;
 
     // Load the file from the vfs
-    XFILE::CFile vfsFile;
+    CFile vfsFile;
     if (!vfsFile.Open(m_path))
     {
       CLog::Log(LOGERROR, "GameClient::CStrategyUseVFS: XBMC cannot open file");
@@ -220,11 +221,12 @@ bool CGameClient::GetEffectiveRomPath(const CStdString &zipPath, const CStdStrin
     return false;
 
   // Enumerate the zip directory, looking for valid extensions
-  CFileItemList itemList;
   CStdString strUrl;
-
   URIUtils::CreateArchivePath(strUrl, "zip", zipPath, "");
-  if (!XFILE::CDirectory::GetDirectory(strUrl, itemList))
+
+  // No mask, because we can't specify an array of file extensions
+  CFileItemList itemList;
+  if (!CDirectory::GetDirectory(strUrl, itemList, /* mask = */ "", DIR_FLAG_READ_CACHE | DIR_FLAG_NO_FILE_INFO))
     return false;
 
   for (int i = 0; i < itemList.Size(); i++)
