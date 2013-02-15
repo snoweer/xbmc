@@ -40,7 +40,7 @@ struct PlatformMap
   const char      *extensions;
   // Initially empty, this cache is populated with parsed extensions on the
   // first run of GetPlatformByExtension(). This also allows runtime
-  // modifications through advanced settings.
+  // modifications of the hard-coded list below through advanced settings.
   CStdStringArray vecExtensions;
 };
 
@@ -50,13 +50,13 @@ static PlatformMap platformInfo[] =
 {
   { PLATFORM_UNKNOWN,              "Unknown",              "" },
   { PLATFORM_OTHER,                "Other",                "" },
-  { PALTFORM_3D0,                  "3DO",                  "" },
+  { PLATFORM_3D0,                  "3DO",                  "" },
   { PLATFORM_AMIGA,                "Amiga",                "" },
   { PLATFORM_AMIGA_CD32,           "Amiga CD32",           "" },
-  { PALTFORM_AMSTRAD_CPC,          "Amstrad CPC",          "" },
-  { PALTFORM_APPLE_II,             "Apple II",             "" },
-  { PALTFORM_ATARI_2600,           "Atari 2600",           "" },
-  { PALTFORM_ATARI_5200,           "Atari 5200",           "" },
+  { PLATFORM_AMSTRAD_CPC,          "Amstrad CPC",          "" },
+  { PLATFORM_APPLE_II,             "Apple II",             "" },
+  { PLATFORM_ATARI_2600,           "Atari 2600",           "" },
+  { PLATFORM_ATARI_5200,           "Atari 5200",           "" },
   { PLATFORM_ATARI_7800,           "Atari 7800",           "" },
   { PLATFORM_ATARI_8_BIT,          "Atari 8-bit",          "" },
   { PLATFORM_ATARI_ST,             "Atari ST",             "" },
@@ -199,7 +199,7 @@ void CGameManager::RegisterAddon(GameClientPtr clientAddon)
   GameClientObject clientObject;
   clientObject.id = clientAddon->ID();
   clientObject.extensions = clientAddon->GetExtensions();
-  TranslatePlatformArray(clientAddon->GetPlatforms(), clientObject.paltforms);
+  TranslatePlatformArray(clientAddon->GetPlatforms(), clientObject.platforms);
 
   // Currently we only store these three fields, so we're all done here
   m_gameClients.push_back(clientObject);
@@ -273,8 +273,8 @@ void CGameManager::GetGameClientIDs(const CFileItem& file, CStdStringArray &cand
     // If a platform hint was given, and a game client specifies a platform
     // (doesn't omit the <platforms> tag from its addon.xml), and the game
     // client doesn't list the platform, then filter it out.
-    if ((platformHint != PLATFORM_UNKNOWN) && (!it->paltforms.empty()) &&
-        (std::find(it->paltforms.begin(), it->paltforms.end(), platformHint) == it->paltforms.end()))
+    if ((platformHint != PLATFORM_UNKNOWN) && (!it->platforms.empty()) &&
+        (std::find(it->platforms.begin(), it->platforms.end(), platformHint) == it->platforms.end()))
       continue;
 
     // If the game client lists supported extensions, filter by those as well

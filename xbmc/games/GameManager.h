@@ -30,13 +30,13 @@ enum GamePlatform
 {
   PLATFORM_UNKNOWN              = -2, // Unknown to XBMC and all addons
   PLATFORM_OTHER                = -1, // Unknown to XBMC, but known by an addon
-  PALTFORM_3D0                  = 35,
+  PLATFORM_3D0                  = 35,
   PLATFORM_AMIGA                = 19,
   PLATFORM_AMIGA_CD32           = 56,
-  PALTFORM_AMSTRAD_CPC          = 60,
-  PALTFORM_APPLE_II             = 31,
-  PALTFORM_ATARI_2600           = 28,
-  PALTFORM_ATARI_5200           = 33,
+  PLATFORM_AMSTRAD_CPC          = 60,
+  PLATFORM_APPLE_II             = 31,
+  PLATFORM_ATARI_2600           = 28,
+  PLATFORM_ATARI_5200           = 33,
   PLATFORM_ATARI_7800           = 34,
   PLATFORM_ATARI_8_BIT          = 39,
   PLATFORM_ATARI_ST             = 24,
@@ -199,7 +199,7 @@ private:
   {
     CStdString        id;
     CStdStringArray   extensions;
-    GamePlatformArray paltforms;
+    GamePlatformArray platforms;
   };
 
   std::vector<GameClientObject> m_gameClients;
