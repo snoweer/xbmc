@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<addon id="repository.libretro-win32"
+<addon id="repository.libretro-linux"
         name="Libretro Emulators"
         version="1.0.0"
         provider-name="garbear">
@@ -8,9 +8,9 @@
         <import addon="xbmc.libretro" version="1.0.0"/>
     </requires>
     <extension point="xbmc.addon.repository" name="Libretro Emulators">
-        <info compressed="false">https://raw.github.com/garbear/repository.libretro/master/win32/addons.xml</info>
-        <checksum>https://raw.github.com/garbear/repository.libretro/master/win32/addons.xml.md5</checksum>
-        <datadir zip="true">https://raw.github.com/garbear/repository.libretro/master/win32/release/</datadir>
+        <info compressed="false">https://raw.github.com/garbear/repository.libretro/master/linux/addons.xml</info>
+        <checksum>https://raw.github.com/garbear/repository.libretro/master/linux/addons.xml.md5</checksum>
+        <datadir zip="true">https://raw.github.com/garbear/repository.libretro/master/linux/release/</datadir>
         <hashes>true</hashes>
     </extension>
     <extension point="xbmc.addon.metadata">
@@ -19,6 +19,6 @@
         <disclaimer>The owners and submitters to this repository do not host or distribute any of the content displayed by these addons nor do they have any affiliation with the content providers. Team XBMC did not make all the add-ons on this repository and are not responsible for their content.</disclaimer>
         <noicon>true</noicon>
         <nofanart>true</nofanart>
-        <platform>windx wingl</platform>
+        <platform>linux</platform>
     </extension>
 </addon>
