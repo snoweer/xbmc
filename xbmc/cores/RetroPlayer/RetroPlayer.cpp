@@ -25,6 +25,7 @@
 #include "cores/dvdplayer/DVDClock.h"
 #include "cores/VideoRenderers/RenderManager.h"
 #include "dialogs/GUIDialogBusy.h"
+#include "dialogs/GUIDialogContextMenu.h"
 #include "games/GameManager.h"
 #include "games/tags/GameInfoTag.h"
 #include "guilib/GUIWindowManager.h"
@@ -95,17 +96,58 @@ bool CRetroPlayer::OpenFile(const CFileItem& file, const CPlayerOptions& options
   m_file = file;
   m_PlayerOptions = options;
 
-  m_gameClient = CGameManager::Get().GetGameClient(m_file);
+  CStdStringArray candidates;
+  CGameManager::Get().GetGameClientIDs(m_file, candidates);
+  if (candidates.empty())
+  {
+    CLog::Log(LOGERROR, "RetroPlayer: Error: no suitable game clients");
+    return false;
+  }
+  else if (candidates.size() > 1)
+  {
+    CLog::Log(LOGDEBUG, "RetroPlayer: Multiple clients found: %s", StringUtils::JoinString(candidates, ", ").c_str());
+
+    std::vector<GameClientPtr> clients;
+    CContextButtons choices;
+
+    for (unsigned int i = 0; i < candidates.size(); i++)
+    {
+      AddonPtr addon;
+      CAddonMgr::Get().GetAddon(candidates[i], addon, ADDON_GAMEDLL);
+      GameClientPtr client = boost::dynamic_pointer_cast<CGameClient>(addon);
+      clients.push_back(client);
+      if (client)
+        choices.Add(i, client->Name());
+    }
+
+    int btnid = CGUIDialogContextMenu::ShowAndGetChoice(choices);
+    if (btnid < 0)
+    {
+      CLog::Log(LOGDEBUG, "RetroPlayer: User cancelled game client selection");
+      return false;
+    }
+    m_gameClient = clients[btnid];
+    CLog::Log(LOGDEBUG, "RetroPlayer: Using %s", m_gameClient->ID().c_str());
+  }
+  else // candidates.size() == 1
+  {
+    AddonPtr addon;
+    CAddonMgr::Get().GetAddon(candidates[0], addon, ADDON_GAMEDLL);
+    m_gameClient = boost::dynamic_pointer_cast<CGameClient>(addon);
+  }
+
   if (!m_gameClient)
   {
     CLog::Log(LOGERROR, "RetroPlayer: Error: no suitable game clients");
     return false;
   }
+
   if (!m_gameClient->Init())
   {
     CLog::Log(LOGERROR, "RetroPlayer: Failed to init game client %s", m_gameClient->ID().c_str());
     return false;
   }
+
   CLog::Log(LOGINFO, "RetroPlayer: Using game client %s at version %s", m_gameClient->GetClientName().c_str(), m_gameClient->GetClientVersion().c_str());
   m_retroPlayer = this;
   if (!m_gameClient->OpenFile(m_file, m_callbacks))
@@ -114,6 +156,7 @@ bool CRetroPlayer::OpenFile(const CFileItem& file, const CPlayerOptions& options
     m_gameClient.reset();
     return false;
   }
+
   if (m_gameClient->GetFrameRate() < 5.0 || m_gameClient->GetFrameRate() > 100.0)
   {
     CLog::Log(LOGERROR, "RetroPlayer: Game client reported invalid framerate: %f", (float)m_gameClient->GetFrameRate());
@@ -289,12 +332,18 @@ void CRetroPlayer::Seek(bool bPlus, bool bLargeStep)
   if (bPlus) // Cannot seek forward in time.
     return;
 
+  if (!m_gameClient)
+    return;
+
   int seek_seconds = bLargeStep ? 10 : 1;
   m_gameClient->RewindFrames(seek_seconds * m_gameClient->GetFrameRate());
 }
 
 void CRetroPlayer::SeekPercentage(float fPercent)
 {
+  if (!m_gameClient)
+    return;
+
   int max_buffer = m_gameClient->RewindFramesAvailMax();
   if (!max_buffer) // Rewind not supported for game.
      return;
@@ -308,6 +357,9 @@ void CRetroPlayer::SeekPercentage(float fPercent)
 
 float CRetroPlayer::GetPercentage()
 {
+  if (!m_gameClient)
+    return 0.0f;
+
   int max_buffer = m_gameClient->RewindFramesAvailMax();
   if (!max_buffer)
      return 0.0f;
@@ -318,6 +370,9 @@ float CRetroPlayer::GetPercentage()
 
 void CRetroPlayer::SeekTime(int64_t iTime)
 {
+  if (!m_gameClient)
+    return;
+
   int current_buffer = m_gameClient->RewindFramesAvail();
   if (!current_buffer) // Rewind not supported for game.
      return;
@@ -330,12 +385,18 @@ void CRetroPlayer::SeekTime(int64_t iTime)
 
 int64_t CRetroPlayer::GetTime()
 {
+  if (!m_gameClient)
+    return 0;
+
   int current_buffer = m_gameClient->RewindFramesAvail();
   return 1000 * current_buffer / m_gameClient->GetFrameRate(); // Millisecs
 }
 
 int64_t CRetroPlayer::GetTotalTime()
 {
+  if (!m_gameClient)
+    return 0;
+
   int max_buffer = m_gameClient->RewindFramesAvailMax();
   return 1000 * max_buffer / m_gameClient->GetFrameRate(); // Millisecs
 }

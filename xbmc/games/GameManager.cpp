@@ -116,27 +116,6 @@ void CGameManager::UnregisterAddonByID(const CStdString &ID)
   CLog::Log(LOGERROR, "CGameManager: can't unregister %s - not registered!", ID.c_str());
 }
 
-GameClientPtr CGameManager::GetGameClient(const CFileItem& file) const
-{
-  CStdStringArray candidates;
-  GetGameClientIDs(file, candidates);
-
-  AddonPtr addon;
-  if (candidates.size() == 1)
-  {
-    CAddonMgr::Get().GetAddon(candidates[0], addon, ADDON_GAMEDLL);
-    return boost::dynamic_pointer_cast<CGameClient>(addon);
-  }
-  else if (candidates.size() > 1)
-  {
-    CLog::Log(LOGINFO, "GameManager: Multiple game clients found, using %s", candidates[0].c_str());
-    CLog::Log(LOGINFO, "GameManager: Candidates were %s", StringUtils::JoinString(candidates, ", ").c_str());
-    CAddonMgr::Get().GetAddon(candidates[0], addon, ADDON_GAMEDLL);
-    return boost::dynamic_pointer_cast<CGameClient>(addon);
-  }
-  return GameClientPtr();
-}
-
 void CGameManager::GetGameClientIDs(const CFileItem& file, CStdStringArray &candidates) const
 {
   candidates.clear();
