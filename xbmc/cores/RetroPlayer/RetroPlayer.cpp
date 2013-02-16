@@ -125,10 +125,22 @@ bool CRetroPlayer::OpenFile(const CFileItem& file, const CPlayerOptions& options
         choices.Add(i, client->Name());
       }
     }
+
+    // Choice to go to the add-on manager
+    choices.Add(choices.size(), 24024); // "Emulators"
+
     int btnid = CGUIDialogContextMenu::ShowAndGetChoice(choices);
-    if (btnid < 0 || btnid >= (int)clients.size())
+    if (btnid < 0 || btnid > (int)clients.size())
     {
       CLog::Log(LOGDEBUG, "RetroPlayer: User cancelled game client selection");
+      return false;
+    }
+    else if (btnid == clients.size())
+    {
+      CLog::Log(LOGDEBUG, "RetroPlayer: User chose add-on manager from game client selection dialog");
+      CStdStringArray params;
+      params.push_back("addons://all/xbmc.gameclient");
+      g_windowManager.ActivateWindow(WINDOW_ADDON_BROWSER, params);
       return false;
     }
     m_gameClient = clients[btnid];
