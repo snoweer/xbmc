@@ -68,7 +68,8 @@ bool CRetroPlayer::OpenFile(const CFileItem& file, const CPlayerOptions& options
 
   if (IsRunning())
     CloseFile();
-  
+
+  // Get game info tag (from a mutable file item, if necessary)
   const GAME_INFO::CGameInfoTag *tag = file.GetGameInfoTag();
   CFileItem temp;
   if (!tag)
@@ -78,6 +79,7 @@ bool CRetroPlayer::OpenFile(const CFileItem& file, const CPlayerOptions& options
       tag = temp.GetGameInfoTag();
   }
 
+  // Dump discovered infomation to the debug log
   if (tag)
   {
     CLog::Log(LOGDEBUG, "RetroPlayer: ---------------------------------------");
@@ -93,35 +95,38 @@ bool CRetroPlayer::OpenFile(const CFileItem& file, const CPlayerOptions& options
     CLog::Log(LOGDEBUG, "RetroPlayer: ---------------------------------------");
   }
 
-  m_file = file;
-  m_PlayerOptions = options;
-
+  // Now we need to see how many game clients contend for this file
   CStdStringArray candidates;
-  CGameManager::Get().GetGameClientIDs(m_file, candidates);
+  CGameManager::Get().GetGameClientIDs(file, candidates);
   if (candidates.empty())
   {
     CLog::Log(LOGERROR, "RetroPlayer: Error: no suitable game clients");
     return false;
   }
-  else if (candidates.size() > 1)
+  else if (candidates.size() == 1)
+  {
+    AddonPtr addon;
+    CAddonMgr::Get().GetAddon(candidates[0], addon, ADDON_GAMEDLL);
+    m_gameClient = boost::dynamic_pointer_cast<CGameClient>(addon);
+  }
+  else
   {
     CLog::Log(LOGDEBUG, "RetroPlayer: Multiple clients found: %s", StringUtils::JoinString(candidates, ", ").c_str());
-
     std::vector<GameClientPtr> clients;
     CContextButtons choices;
-
     for (unsigned int i = 0; i < candidates.size(); i++)
     {
       AddonPtr addon;
       CAddonMgr::Get().GetAddon(candidates[i], addon, ADDON_GAMEDLL);
       GameClientPtr client = boost::dynamic_pointer_cast<CGameClient>(addon);
-      clients.push_back(client);
       if (client)
+      {
+        clients.push_back(client);
         choices.Add(i, client->Name());
+      }
     }
-
     int btnid = CGUIDialogContextMenu::ShowAndGetChoice(choices);
-    if (btnid < 0)
+    if (btnid < 0 || btnid >= (int)clients.size())
     {
       CLog::Log(LOGDEBUG, "RetroPlayer: User cancelled game client selection");
       return false;
@@ -129,40 +134,44 @@ bool CRetroPlayer::OpenFile(const CFileItem& file, const CPlayerOptions& options
     m_gameClient = clients[btnid];
     CLog::Log(LOGDEBUG, "RetroPlayer: Using %s", m_gameClient->ID().c_str());
   }
-  else // candidates.size() == 1
-  {
-    AddonPtr addon;
-    CAddonMgr::Get().GetAddon(candidates[0], addon, ADDON_GAMEDLL);
-    m_gameClient = boost::dynamic_pointer_cast<CGameClient>(addon);
-  }
 
+  // This really just screens against the dynamic pointer cast
   if (!m_gameClient)
   {
     CLog::Log(LOGERROR, "RetroPlayer: Error: no suitable game clients");
     return false;
   }
 
+  // Load the DLL and retrieve system info from the game client
   if (!m_gameClient->Init())
   {
     CLog::Log(LOGERROR, "RetroPlayer: Failed to init game client %s", m_gameClient->ID().c_str());
     return false;
   }
 
-  CLog::Log(LOGINFO, "RetroPlayer: Using game client %s at version %s", m_gameClient->GetClientName().c_str(), m_gameClient->GetClientVersion().c_str());
+  CLog::Log(LOGINFO, "RetroPlayer: Using game client %s at version %s", m_gameClient->GetClientName().c_str(),
+    m_gameClient->GetClientVersion().c_str());
+
+  // We need to store a pointer to ourself before sending the callbacks to the game client
   m_retroPlayer = this;
-  if (!m_gameClient->OpenFile(m_file, m_callbacks))
+  if (!m_gameClient->OpenFile(file, m_callbacks))
   {
     CLog::Log(LOGERROR, "RetroPlayer: Error opening file");
     m_gameClient.reset();
     return false;
   }
 
+  // Validate the reported framerate
   if (m_gameClient->GetFrameRate() < 5.0 || m_gameClient->GetFrameRate() > 100.0)
   {
     CLog::Log(LOGERROR, "RetroPlayer: Game client reported invalid framerate: %f", (float)m_gameClient->GetFrameRate());
     m_gameClient.reset();
     return false;
   }
+
+  // Success. We use m_file.GetPath() to check if a file is playing in IsPlaying()
+  m_file = file;
+  m_PlayerOptions = options;
 
   g_renderManager.PreInit();
   Create();
@@ -177,6 +186,7 @@ bool CRetroPlayer::CloseFile()
 
   // Set the abort request so that other threads can finish up
   m_bStop = true;
+  m_file = CFileItem();
 
   // Set m_video.m_bStop to false before triggering the event
   m_video.StopThread(false);
