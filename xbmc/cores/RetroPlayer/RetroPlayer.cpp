@@ -128,7 +128,7 @@ bool CRetroPlayer::OpenFile(const CFileItem& file, const CPlayerOptions& options
     }
 
     // Choice to go to the add-on manager
-    choices.Add(choices.size(), 24024); // "Emulators"
+    choices.Add(choices.size(), 24025); // "Manage emulators..."
 
     int btnid = CGUIDialogContextMenu::ShowAndGetChoice(choices);
     if (btnid < 0 || btnid > (int)clients.size())
