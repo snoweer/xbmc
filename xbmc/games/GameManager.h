@@ -60,7 +60,7 @@ public:
    * candidates (which may yeild multiple if there are several different kinds
    * of ROMs inside).
    */
-  void GetGameClientIDs(const CFileItem& file, CStdStringArray &candidates) const;
+  void GetGameClientIDs(const CFileItem& file, CStdStringArray &candidates, int max = -1) const;
 
 private:
   /**

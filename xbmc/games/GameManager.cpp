@@ -116,7 +116,7 @@ void CGameManager::UnregisterAddonByID(const CStdString &ID)
   CLog::Log(LOGERROR, "CGameManager: can't unregister %s - not registered!", ID.c_str());
 }
 
-void CGameManager::GetGameClientIDs(const CFileItem& file, CStdStringArray &candidates) const
+void CGameManager::GetGameClientIDs(const CFileItem& file, CStdStringArray &candidates, int max /* = -1 */) const
 {
   candidates.clear();
 
@@ -172,6 +172,8 @@ void CGameManager::GetGameClientIDs(const CFileItem& file, CStdStringArray &cand
     }
 
     candidates.push_back(it->id);
+    if (max != -1 && (int)candidates.size() >= max)
+      break;
   }
 }
 
