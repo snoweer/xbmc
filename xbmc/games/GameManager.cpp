@@ -165,8 +165,6 @@ void CGameManager::GetGameClientIDs(const CFileItem& file, CStdStringArray &cand
   CStdString strExtension(URIUtils::GetExtension(file.GetPath()));
   strExtension.ToLower();
 
-  // TODO: Use platformInfo.extensions as a platform hint, if needed
-
   CSingleLock lock(m_critSection);
 
   for (std::vector<GameClientObject>::const_iterator it = m_gameClients.begin(); it != m_gameClients.end(); it++)
@@ -179,9 +177,20 @@ void CGameManager::GetGameClientIDs(const CFileItem& file, CStdStringArray &cand
       continue;
 
     // If the game client lists supported extensions, filter by those as well
-    if ((!strExtension.empty()) &&
-        (std::find(it->extensions.begin(), it->extensions.end(), strExtension) == it->extensions.end()))
-      continue;
+    if (!it->extensions.empty())
+    {
+      // If the file is a zip, rake the contents for valid game files
+      if (strExtension.Equals(".zip"))
+      {
+        CStdString path2;
+        if (!CGameClient::GetEffectiveRomPath(file.GetPath(), it->extensions, path2))\
+          continue;
+      }
+      else if (std::find(it->extensions.begin(), it->extensions.end(), strExtension) == it->extensions.end())
+      {
+        continue;
+      }
+    }
 
     candidates.push_back(it->id);
   }
