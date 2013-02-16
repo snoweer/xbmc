@@ -25,11 +25,12 @@
 #include "Application.h"
 #include "filesystem/File.h"
 #include "filesystem/Directory.h"
+#include "settings/AdvancedSettings.h"
+#include "threads/SingleLock.h"
 #include "URL.h"
 #include "utils/log.h"
 #include "utils/StringUtils.h"
 #include "utils/URIUtils.h"
-#include "threads/SingleLock.h"
 
 #include <limits>
 #include <boost/shared_ptr.hpp>
@@ -396,6 +397,12 @@ bool CGameClient::OpenFile(const CFileItem& file, const DataReceiver &callbacks)
   CStrategyEnterZip     s4;
 
   IRetroStrategy *strategies[] = {&s1, &s2, &s3, &s4};
+
+  if (g_advancedSettings.m_bPreferVFS)
+  {
+    std::swap(strategies[0], strategies[2]);
+    std::swap(strategies[1], strategies[3]);
+  }
 
   bool success = false;
   for (unsigned int i = 0; i < sizeof(strategies) / sizeof(strategies[0]); i++)

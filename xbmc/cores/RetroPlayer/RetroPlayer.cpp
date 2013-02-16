@@ -30,6 +30,7 @@
 #include "games/tags/GameInfoTag.h"
 #include "guilib/GUIWindowManager.h"
 #include "guilib/Key.h"
+#include "settings/AdvancedSettings.h"
 #include "utils/log.h"
 #include "utils/StringUtils.h"
 
@@ -273,9 +274,8 @@ void CRetroPlayer::Process()
     if (nextpts < CDVDClock::GetAbsoluteClock())
       nextpts = CDVDClock::GetAbsoluteClock();
 
-    // Slow down to 0.5x (an extra frame) if the audio is delayed by more than
-    // 0.4s (24 frames @ 60s)
-    if (m_audio.GetDelay() > 0.4)
+    // Slow down to 0.5x (an extra frame) if the audio is delayed
+    if (m_audio.GetDelay() * 1000 > g_advancedSettings.m_iGameAudioBuffer)
       nextpts += frametime * PLAYSPEED_NORMAL / m_playSpeed;
 
     CDVDClock::WaitAbsoluteClock(nextpts);
