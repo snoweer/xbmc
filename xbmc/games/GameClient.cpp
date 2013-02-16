@@ -362,8 +362,6 @@ bool CGameClient::OpenFile(const CFileItem& file, const DataReceiver &callbacks)
   if (!m_dll.IsLoaded())
     Init();
 
-  // This property may be set by Addons.ExecuteAddon(), XBMC.PlayMedia() or
-  // ListItem.setInfo(). If it exists, screen against our own ID.
   if (!file.GetProperty("gameclient").empty() && file.GetProperty("gameclient").asString() != ID())
   {
     CLog::Log(LOGERROR, "GameClient: File has \"gameclient\" property set, but it doesn't match mine!");

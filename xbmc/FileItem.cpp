@@ -939,7 +939,6 @@ bool CFileItem::IsAudio() const
 bool CFileItem::IsGame() const
 {
   if (HasGameInfoTag()) return true;
-  // This field may be set by Addons.ExecuteAddon(), XBMC.PlayMedia() or ListItem.setInfo()
   if (!GetProperty("gameclient").empty()) return true;
   if (HasVideoInfoTag()) return false;
   if (HasMusicInfoTag()) return false;

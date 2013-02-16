@@ -120,7 +120,7 @@ void CGameManager::GetGameClientIDs(const CFileItem& file, CStdStringArray &cand
 {
   candidates.clear();
 
-  // This property may be set by Addons.ExecuteAddon(), XBMC.PlayMedia() or ListItem.setInfo()
+  // Whether we should force a specific game client
   if (!file.GetProperty("gameclient").empty())
   {
     CStdString id = file.GetProperty("gameclient").asString();
