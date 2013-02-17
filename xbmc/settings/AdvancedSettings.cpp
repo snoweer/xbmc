@@ -320,6 +320,7 @@ void CAdvancedSettings::Initialize()
 
   m_iGameAudioBuffer = 500;
   m_bPreferVFS = false;
+  m_bAllowZip = false;
 
   m_databaseMusic.Reset();
   m_databaseVideo.Reset();
@@ -1059,6 +1060,7 @@ void CAdvancedSettings::ParseSettingsFile(const CStdString &file)
   {
     XMLUtils::GetUInt(pElement, "audiobuffer", m_iGameAudioBuffer);
     XMLUtils::GetBoolean(pElement, "prefervfs", m_bPreferVFS);
+    XMLUtils::GetBoolean(pElement, "allowzip", m_bAllowZip);
   }
 
   // load in the GUISettings overrides:

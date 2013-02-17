@@ -349,6 +349,7 @@ class CAdvancedSettings
 
     unsigned int m_iGameAudioBuffer; // milliseconds
     bool m_bPreferVFS;
+    bool m_bAllowZip; // Allow emulators to load zip files
 
     bool m_guiVisualizeDirtyRegions;
     int  m_guiAlgorithmDirtyRegions;

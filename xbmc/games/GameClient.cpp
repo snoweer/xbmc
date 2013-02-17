@@ -623,8 +623,9 @@ void CGameClient::SetExtensions(const CStdString &strExtensionList)
     if (it->empty())
       continue;
 
-    // Zip crashes EVERY emulator I've tried so far. Skip it.
-    if (it->Equals("zip"))
+    // Zip crashes every emulator I've tried so far
+    // Skip it unless enabled via advanced settings
+    if (it->Equals("zip") && !g_advancedSettings.m_bAllowZip)
       continue;
 
     it->ToLower();
