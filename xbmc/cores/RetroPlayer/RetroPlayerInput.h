@@ -28,12 +28,47 @@
 #include <stdint.h>
 
 // From dinput.h
-#define GAMEPAD_BUTTON_COUNT 128
-#define GAMEPAD_HAT_COUNT    4
+#define GAMEPAD_BUTTON_COUNT 128 // WINJoystick
+#define GAMEPAD_HAT_COUNT    4   // WINJoystick
+#define GAMEPAD_AXIS_COUNT   64  // SDLJoystick
 
 class CRetroPlayerInput
 {
 public:
+  /**
+   * An arrow-based device on a gamepad. Legally, no more than two buttons can
+   * be pressed, and only if they are adjacent. If no buttons are pressed, the
+   * hat is centered.
+   */
+  struct Hat
+  {
+    Hat() { up = right = down = left = 0; }
+    bool operator==(const Hat &lhs) const { return up == lhs.up && right == lhs.right && down == lhs.down && left == lhs.left; }
+    // Iterate through cardinal directions in an ordinal fasion
+    unsigned char &operator[](unsigned int i);
+    const unsigned char &operator[](unsigned int i) const;
+    // Translate this hat into a cardinal direction ("N", "NE", "E", ...) or "CENTERED"
+    const char *GetDirection() const;
+
+    // 1 if pressed, 0 if unpressed
+    unsigned char up;
+    unsigned char right;
+    unsigned char down;
+    unsigned char left;
+  };
+
+  struct Gamepad
+  {
+    CStdString    name;
+    int           id;
+    unsigned char buttons[GAMEPAD_BUTTON_COUNT];
+    unsigned int  buttonCount;
+    Hat           hats[GAMEPAD_HAT_COUNT];
+    unsigned int  hatCount;
+    float         axes[GAMEPAD_AXIS_COUNT];
+    unsigned int  axisCount;
+  };
+
   CRetroPlayerInput();
   ~CRetroPlayerInput() { Finish(); }
 
@@ -70,31 +105,9 @@ public:
    * on every frame, once per gamepad device. Currently, gamepad axes are
    * ignored.
    */
-  void ProcessGamepad(const std::string &device, const unsigned char buttons[GAMEPAD_BUTTON_COUNT],
-    int numHats, const unsigned long hats[GAMEPAD_HAT_COUNT]);
+  void ProcessGamepad(const Gamepad &gamepad);
 
 private:
-  /**
-   * An arrow-based device on a gamepad. Legally, no more than two buttons can
-   * be pressed, and only if they are adjacent. If no buttons are pressed, the
-   * hat is centered.
-   */
-  struct Hat
-  {
-    Hat() { up = right = down = left = 0; }
-    bool operator==(const Hat &lhs) const { return up == lhs.up && right == lhs.right && down == lhs.down && left == lhs.left; }
-    // Iterate through cardinal directions in an ordinal fasion
-    unsigned char &operator[](unsigned int i);
-    // Translate this hat into a cardinal direction ("N", "NE", "E", ...) or "CENTERED"
-    const char *GetDirection() const;
-
-    // 1 if pressed, 0 if unpressed
-    unsigned char up;
-    unsigned char right;
-    unsigned char down;
-    unsigned char left;
-  };
-
   /**
    * Translate an action ID, found in Key.h, to the corresponding RetroPad ID.
    * Returns -1 if the ID is invalid for the device given by m_device
@@ -106,9 +119,8 @@ private:
   bool m_bActive; // Unused currently
 
   // RETRO_DEVICE_ID_JOYPAD_R3 is the last key in libretro.h
-  int16_t       m_joypadState[ACTION_JOYPAD_CONTROL_END - ACTION_GAME_CONTROL_START + 1];
-  unsigned char m_buttonState[GAMEPAD_BUTTON_COUNT]; 
-  Hat           m_hatState[GAMEPAD_HAT_COUNT];
+  int16_t m_joypadState[ACTION_JOYPAD_CONTROL_END - ACTION_GAME_CONTROL_START + 1];
+  Gamepad m_gamepad;
 
   CCriticalSection m_statesGuard;
 };
