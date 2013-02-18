@@ -20,7 +20,9 @@
 
 #include "system.h"
 #include "SDLJoystick.h"
+#include "Application.h"
 #include "ButtonTranslator.h"
+#include "cores/RetroPlayer/RetroPlayer.h"
 #include "settings/AdvancedSettings.h"
 #include "utils/log.h"
 
@@ -28,6 +30,8 @@
 
 #ifdef HAS_SDL_JOYSTICK
 #include <SDL/SDL.h>
+
+#define ARRAY_LENGTH(x) (sizeof((x)) / sizeof((x)[0]))
 
 using namespace std;
 
@@ -150,6 +154,47 @@ void CJoystick::Update()
     numax = (numax>MAX_AXES)?MAX_AXES:numax;
     int axisval;
     uint8_t hatval;
+
+    // Build a gamepad object to pass to CRetroPlayerInput
+    CRetroPlayerInput::Gamepad gamepad = { };
+    gamepad.name = m_JoystickNames[j];
+    gamepad.id = SDL_JoystickIndex(joy);
+
+    // Gamepad buttons
+    gamepad.buttonCount = std::min(ARRAY_LENGTH(gamepad.buttons), (size_t)numb);
+    for (unsigned int b = 0; b < gamepad.buttonCount; b++)
+      if (SDL_JoystickGetButton(joy, b))
+        gamepad.buttons[b] = 1;
+
+    // Gamepad hats
+    gamepad.hatCount = std::min(ARRAY_LENGTH(gamepad.hats), (size_t)numhat);
+    for (unsigned int h = 0; h < gamepad.hatCount; h++)
+    {
+      uint8_t hat = SDL_JoystickGetHat(joy, h);
+      if      (hat & SDL_HAT_UP)    gamepad.hats[h].up = 1;
+      else if (hat & SDL_HAT_DOWN)  gamepad.hats[h].down = 1;
+      if      (hat & SDL_HAT_RIGHT) gamepad.hats[h].right = 1;
+      else if (hat & SDL_HAT_LEFT)  gamepad.hats[h].left = 1;
+    }
+
+    // Gamepad axes
+    gamepad.axisCount = std::min(ARRAY_LENGTH(gamepad.axes), (size_t)numax);
+    for (unsigned int a = 0; a < gamepad.axisCount; a++)
+    {
+      int16_t axis = SDL_JoystickGetAxis(joy, a); // [-32768 to 32767]
+      if (axis > m_DeadzoneRange)
+        gamepad.axes[a] = (float)(axis - m_DeadzoneRange) / (float)(MAX_AXISAMOUNT - m_DeadzoneRange);
+      else if (axis < -m_DeadzoneRange)
+        gamepad.axes[a] = (float)(axis + m_DeadzoneRange) / (float)(MAX_AXISAMOUNT - m_DeadzoneRange);
+    }
+
+    // Got our gamepad object, hand it off to CRetroPlayerInput
+    if (g_application.m_pPlayer && g_application.GetCurrentPlayer() == EPC_RETROPLAYER)
+    {
+      CRetroPlayer* rp = dynamic_cast<CRetroPlayer*>(g_application.m_pPlayer);
+      if (rp)
+        rp->GetInput().ProcessGamepad(gamepad);
+    }
 
     // get button states first, they take priority over axis
     for (int b = 0 ; b<numb ; b++)
