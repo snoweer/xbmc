@@ -40,6 +40,9 @@ public:
   virtual bool OpenFile(const CFileItem& file, const CPlayerOptions& options);
   virtual bool CloseFile();
 
+  void GoToAddonManager(const CFileItem &file, bool prompt);
+  bool ChooseAddon(const CStdStringArray &clients, const CFileItem &file);
+
   virtual bool OnAction(const CAction &action)
   {
     // No need to forward ACTION_GAME_CONTROL_* to m_input, these are

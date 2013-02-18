@@ -22,6 +22,9 @@
 
 #include "GameManager.h"
 #include "addons/AddonManager.h"
+#include "Application.h"
+#include "dialogs/GUIDialogYesNo.h"
+#include "guilib/GUIWindowManager.h"
 #include "threads/SingleLock.h"
 #include "utils/log.h"
 #include "utils/StringUtils.h"
@@ -104,6 +107,52 @@ void CGameManager::RegisterAddon(GameClientPtr clientAddon)
 
   // Unload the DLL
   clientAddon->DeInit();
+
+  // If a file was queued by RetroPlayer, test to see if we should launch the
+  // newly installed game client
+  if (!m_queuedFile.GetPath().empty())
+  {
+    // Test if the new client can launch the file. Backup the file first
+    // because GetGameClientIDs() will reset it.
+    CStdStringArray candidates;
+    CGameManager::Get().GetGameClientIDs(m_queuedFile, candidates, -1, false);
+    if (std::find(candidates.begin(), candidates.end(), clientAddon->ID()) != candidates.end())
+    {
+      // We can launch the file with clientAddon, if the user answers yes then do so
+      CGUIDialogYesNo *pDialog = dynamic_cast<CGUIDialogYesNo*>(g_windowManager.GetWindow(WINDOW_DIALOG_YES_NO));
+      if (pDialog)
+      {
+        CStdString title(m_queuedFile.GetGameInfoTag()->GetTitle());
+        if (title.empty())
+          title = URIUtils::GetFileName(m_queuedFile.GetPath());
+
+        pDialog->SetHeading(24025); // Manage emulators...
+        pDialog->SetLine(0, 24057); // A compatible emulator was installed for:
+        pDialog->SetLine(1, title); //
+        pDialog->SetLine(2, 20013); // Do you wish to launch the game?
+        pDialog->DoModal();
+
+        if (pDialog->IsConfirmed())
+        {
+          // This makes sure we don't prompted again on PlayMedia()
+          m_queuedFile.SetProperty("gameclient", clientAddon->ID());
+
+          // Close the add-on info dialog, if open
+          int iWindow = g_windowManager.GetTopMostModalDialogID(true);
+          CGUIWindow *window = g_windowManager.GetWindow(iWindow);
+          if (window)
+            window->Close();
+
+          // Play a copy, because PlayMedia() will reset the queued file
+          // (and then no longer be able to play it)
+          CFileItem fileCopy(m_queuedFile);
+          g_application.PlayMedia(fileCopy);
+        }
+      }
+      // Don't ask the user twice
+      m_queuedFile = CFileItem();
+    }
+  }
 }
 
 void CGameManager::UnregisterAddonByID(const CStdString &ID)
@@ -116,8 +165,13 @@ void CGameManager::UnregisterAddonByID(const CStdString &ID)
   CLog::Log(LOGERROR, "CGameManager: can't unregister %s - not registered!", ID.c_str());
 }
 
-void CGameManager::GetGameClientIDs(const CFileItem& file, CStdStringArray &candidates, int max /* = -1 */) const
+void CGameManager::GetGameClientIDs(const CFileItem& file, CStdStringArray &candidates, int max /* = -1 */, bool resetQueued /* = true */)
 {
+  // By default, calling GetGameClientIDs() resets the queued file. This happens
+  // often enough that leaving the add-on browser should reset the file.
+  if (resetQueued)
+    m_queuedFile = CFileItem();
+
   candidates.clear();
 
   // Whether we should force a specific game client

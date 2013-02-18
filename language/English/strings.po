@@ -10522,7 +10522,21 @@ msgctxt "#24054"
 msgid "Changelog"
 msgstr ""
 
-#empty strings from id 24055 to 24058
+msgctxt "#24055"
+msgid "No game clients found."
+msgstr ""
+
+msgctxt "#24056"
+msgid "Go to the add-on manager?"
+msgstr ""
+
+msgctxt "#24057"
+msgid "A compatible emulator was installed for:"
+msgstr ""
+
+msgctxt "#24058"
+msgid "Do you wish to launch the game?"
+msgstr ""
 
 msgctxt "#24059"
 msgid "Would you like to enable this Add-on?"

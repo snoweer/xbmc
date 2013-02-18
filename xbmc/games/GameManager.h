@@ -23,6 +23,7 @@
 
 #include "GameClient.h"
 #include "games/tags/GameInfoTagLoader.h"
+#include "FileItem.h"
 #include "threads/CriticalSection.h"
 
 typedef std::vector<GAME_INFO::GamePlatform> GamePlatformArray;
@@ -44,11 +45,18 @@ public:
   static CGameManager &Get();
 
   /**
-   * Create and maintain a cache of game client add-on information.
+   * Create and maintain a cache of game client add-on information. If a file
+   * has been placed in the queue via QueueFile(), it will be launched if a
+   * compatible emulator is registered.
    */
   void RegisterAddons(const ADDON::VECADDONS &addons);
   void RegisterAddon(ADDON::GameClientPtr clientAddon);
   void UnregisterAddonByID(const CStdString &ID);
+
+  /**
+   * Queue a file to be launched when the corrent game client is installed.
+   */
+  void QueueFile(const CFileItem &file) { m_queuedFile = file; }
 
   /**
    * Resolve a file item to a list of game client IDs. If the file forces a
@@ -59,8 +67,13 @@ public:
    * zip file, the contents of that zip will be used to find suitable
    * candidates (which may yeild multiple if there are several different kinds
    * of ROMs inside).
+   *
+   * resetQueued causes the queued file to be reset. The purpose of this is to
+   * only invoke the file inside the add-on manager, and GetGameClientIDs()
+   * is called often enough that leaving the add-on manager will eventually
+   * reset it.
    */
-  void GetGameClientIDs(const CFileItem& file, CStdStringArray &candidates, int max = -1) const;
+  void GetGameClientIDs(const CFileItem& file, CStdStringArray &candidates, int max = -1, bool resetQueued = true);
 
 private:
   /**
@@ -82,4 +95,5 @@ private:
 
   std::vector<GameClientObject> m_gameClients;
   CCriticalSection m_critSection; // Guard m_gameClients
+  CFileItem m_queuedFile;
 };
