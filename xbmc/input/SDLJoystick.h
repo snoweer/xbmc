@@ -42,6 +42,7 @@
 #define MAX_AXES 64
 #define MAX_AXISAMOUNT 32768
 
+class CRetroPlayerInput;
 
 // Class to manage all connected joysticks
 
@@ -53,7 +54,7 @@ public:
   void Initialize();
   void Reset(bool axis=false);
   void ResetAxis(int axisId) { m_Amount[axisId] = 0; }
-  void Update();
+  void Update(CRetroPlayerInput *joystickHandler);
   void Update(SDL_Event& event);
   bool GetButton (int& id, bool consider_repeat=true);
   bool GetAxis (int &id);

@@ -19,8 +19,7 @@
 */
 
 #include "WINJoystick.h"
-#include "Application.h"
-#include "cores/RetroPlayer/RetroPlayer.h"
+#include "cores/RetroPlayer/RetroPlayerInput.h"
 #include "input/ButtonTranslator.h"
 #include "settings/AdvancedSettings.h"
 #include "utils/log.h"
@@ -239,7 +238,7 @@ void CJoystick::Reset(bool axis /*=true*/)
   }
 }
 
-void CJoystick::Update()
+void CJoystick::Update(CRetroPlayerInput *joystickHandler)
 {
   if (!IsEnabled())
     return;
@@ -284,53 +283,50 @@ void CJoystick::Update()
     if( FAILED( hr = pjoy->GetDeviceState( sizeof( DIJOYSTATE2 ), &js ) ) )
       return; // The device should have been acquired during the Poll()
 
-    // Build a gamepad object to pass to CRetroPlayerInput
-    CRetroPlayerInput::Gamepad gamepad = { };
-    gamepad.name = m_JoystickNames[j];
-    gamepad.id = j;
+    if (joystickHandler)
+    {
+      // Build a gamepad object to pass to CRetroPlayerInput
+      CRetroPlayerInput::Gamepad gamepad = { };
+      gamepad.name = m_JoystickNames[j];
+      gamepad.id = j;
 
-    // Gamepad buttons
-    gamepad.buttonCount = std::min(ARRAY_LENGTH(gamepad.buttons), ARRAY_LENGTH(js.rgbButtons));
-    for (unsigned int b = 0; b < gamepad.buttonCount; b++)
-      if (js.rgbButtons[b] & 0x80)
-        gamepad.buttons[b] = 1;
+      // Gamepad buttons
+      gamepad.buttonCount = std::min(ARRAY_LENGTH(gamepad.buttons), ARRAY_LENGTH(js.rgbButtons));
+      for (unsigned int b = 0; b < gamepad.buttonCount; b++)
+        if (js.rgbButtons[b] & 0x80)
+          gamepad.buttons[b] = 1;
     
-    // Gamepad hats
-    gamepad.hatCount = std::min(ARRAY_LENGTH(gamepad.hats), (size_t)numhat);
-    for (unsigned int h = 0; h < gamepad.hatCount; h++)
-    {
-      bool bCentered = ((js.rgdwPOV[h] & 0xFFFF) == 0xFFFF);
-      if (!bCentered)
+      // Gamepad hats
+      gamepad.hatCount = std::min(ARRAY_LENGTH(gamepad.hats), (size_t)numhat);
+      for (unsigned int h = 0; h < gamepad.hatCount; h++)
       {
-        if ((JOY_POV_NW <= js.rgdwPOV[h] && js.rgdwPOV[h] <= JOY_POV_360) || js.rgdwPOV[h] <= JOY_POV_NE)
-          gamepad.hats[h].up = 1;
-        else if (JOY_POV_SE <= js.rgdwPOV[h] && js.rgdwPOV[h] <= JOY_POV_SW)
-          gamepad.hats[h].down = 1;
+        bool bCentered = ((js.rgdwPOV[h] & 0xFFFF) == 0xFFFF);
+        if (!bCentered)
+        {
+          if ((JOY_POV_NW <= js.rgdwPOV[h] && js.rgdwPOV[h] <= JOY_POV_360) || js.rgdwPOV[h] <= JOY_POV_NE)
+            gamepad.hats[h].up = 1;
+          else if (JOY_POV_SE <= js.rgdwPOV[h] && js.rgdwPOV[h] <= JOY_POV_SW)
+            gamepad.hats[h].down = 1;
 
-        if (JOY_POV_NE <= js.rgdwPOV[h] && js.rgdwPOV[h] <= JOY_POV_SE)
-          gamepad.hats[h].right = 1;
-        else if (JOY_POV_SW <= js.rgdwPOV[h] && js.rgdwPOV[h] <= JOY_POV_NW)
-          gamepad.hats[h].left = 1;
+          if (JOY_POV_NE <= js.rgdwPOV[h] && js.rgdwPOV[h] <= JOY_POV_SE)
+            gamepad.hats[h].right = 1;
+          else if (JOY_POV_SW <= js.rgdwPOV[h] && js.rgdwPOV[h] <= JOY_POV_NW)
+            gamepad.hats[h].left = 1;
+        }
       }
-    }
 
-    // Gamepad axes
-    long amounts[] = {js.lX, js.lY, js.lZ, js.lRx, js.lRy, js.lRz};
-    gamepad.axisCount = std::min(ARRAY_LENGTH(gamepad.axes), ARRAY_LENGTH(amounts));
-    for (unsigned int a = 0; a < gamepad.axisCount; a++)
-    {
-      if (amounts[a] > m_DeadzoneRange)
-        gamepad.axes[a] = (float)(amounts[a] - m_DeadzoneRange) / (float)(MAX_AXISAMOUNT - m_DeadzoneRange);
-      else if (amounts[a] < -m_DeadzoneRange)
-        gamepad.axes[a] = (float)(amounts[a] + m_DeadzoneRange) / (float)(MAX_AXISAMOUNT - m_DeadzoneRange);
-    }
+      // Gamepad axes
+      long amounts[] = {js.lX, js.lY, js.lZ, js.lRx, js.lRy, js.lRz};
+      gamepad.axisCount = std::min(ARRAY_LENGTH(gamepad.axes), ARRAY_LENGTH(amounts));
+      for (unsigned int a = 0; a < gamepad.axisCount; a++)
+      {
+        if (amounts[a] > m_DeadzoneRange)
+          gamepad.axes[a] = (float)(amounts[a] - m_DeadzoneRange) / (float)(MAX_AXISAMOUNT - m_DeadzoneRange);
+        else if (amounts[a] < -m_DeadzoneRange)
+          gamepad.axes[a] = (float)(amounts[a] + m_DeadzoneRange) / (float)(MAX_AXISAMOUNT - m_DeadzoneRange);
+      }
 
-    // Got our gamepad object, hand it off to CRetroPlayerInput
-    if (g_application.m_pPlayer && g_application.GetCurrentPlayer() == EPC_RETROPLAYER)
-    {
-      CRetroPlayer* rp = dynamic_cast<CRetroPlayer*>(g_application.m_pPlayer);
-      if (rp)
-        rp->GetInput().ProcessGamepad(gamepad);
+      joystickHandler->ProcessGamepad(gamepad);
     }
 
 

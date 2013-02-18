@@ -3018,7 +3018,16 @@ bool CApplication::ProcessGamepad(float frameTime)
     iWin = WINDOW_FULLSCREEN_GAME;
 
   int bid = 0;
-  g_Joystick.Update();
+
+  CRetroPlayerInput *joystickHandler = NULL;
+  if (g_application.m_pPlayer && g_application.m_eCurrentPlayer == EPC_RETROPLAYER)
+  {
+    CRetroPlayer* rp = dynamic_cast<CRetroPlayer*>(g_application.m_pPlayer);
+    if (rp)
+      joystickHandler = &rp->GetInput();
+  }
+  g_Joystick.Update(joystickHandler);
+
   if (g_Joystick.GetButton(bid))
   {
     // reset Idle Timer
