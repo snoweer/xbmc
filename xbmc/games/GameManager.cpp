@@ -90,6 +90,12 @@ void CGameManager::RegisterAddon(GameClientPtr clientAddon)
     }
   }
 
+  // Before loading the DLL, check to see if our database has any extension
+  // data (supplied by the <extensions> tag in addon.xml). If this tag is
+  // omitted, we must use extension data embedded within the DLL to populate
+  // m_remoteExtensions.
+  bool missingExtensions = clientAddon->GetExtensions().empty();
+
   // Load the DLL
   if (!clientAddon->Init())
   {
@@ -101,6 +107,11 @@ void CGameManager::RegisterAddon(GameClientPtr clientAddon)
   clientObject.id = clientAddon->ID();
   clientObject.extensions = clientAddon->GetExtensions();
   TranslatePlatformArray(clientAddon->GetPlatforms(), clientObject.platforms);
+
+  // If the client wasn't aware of any extensions earlier, RegisterRemoteAddons()
+  // won't add anything for this client to m_remoteExtensions, so do that now.
+  if (missingExtensions && !clientObject.extensions.empty())
+    m_remoteExtensions.insert(m_remoteExtensions.end(), clientObject.extensions.begin(), clientObject.extensions.end());
 
   // Currently we only store these three fields, so we're all done here
   m_gameClients.push_back(clientObject);
@@ -115,7 +126,7 @@ void CGameManager::RegisterAddon(GameClientPtr clientAddon)
     // Test if the new client can launch the file. Backup the file first
     // because GetGameClientIDs() will reset it.
     CStdStringArray candidates;
-    CGameManager::Get().GetGameClientIDs(m_queuedFile, candidates, -1, false);
+    CGameManager::Get().GetGameClientIDs(m_queuedFile, candidates);
     if (std::find(candidates.begin(), candidates.end(), clientAddon->ID()) != candidates.end())
     {
       // We can launch the file with clientAddon, if the user answers yes then do so
@@ -165,12 +176,70 @@ void CGameManager::UnregisterAddonByID(const CStdString &ID)
   CLog::Log(LOGERROR, "CGameManager: can't unregister %s - not registered!", ID.c_str());
 }
 
-void CGameManager::GetGameClientIDs(const CFileItem& file, CStdStringArray &candidates, int max /* = -1 */, bool resetQueued /* = true */)
+void CGameManager::RegisterRemoteAddons(const VECADDONS &addons)
 {
-  // By default, calling GetGameClientIDs() resets the queued file. This happens
-  // often enough that leaving the add-on browser should reset the file.
-  if (resetQueued)
-    m_queuedFile = CFileItem();
+  CSingleLock lock(m_critSection);
+
+  m_remoteExtensions.clear();
+
+  for (VECADDONS::const_iterator it = addons.begin(); it != addons.end(); it++)
+  {
+    if ((*it)->IsType(ADDON_GAMEDLL))
+    {
+      GameClientPtr gc = boost::dynamic_pointer_cast<CGameClient>(*it);
+      if (gc)
+      {
+        CStdStringArray exts = gc->GetExtensions();
+        m_remoteExtensions.insert(m_remoteExtensions.end(), exts.begin(), exts.end());
+      }
+    }
+  }
+}
+
+bool CGameManager::IsGame(const CStdString& path)
+{
+  CSingleLock lock(m_critSection);
+
+  // Reset the queued file. IsGame() is called often enough that leaving the
+  // add-on browser should reset the file.
+  m_queuedFile = CFileItem();
+
+  // If RegisterRemoteAddons() hasn't been called yet, initialize
+  // m_remoteExtensions with addons from the database.
+  if (m_remoteExtensions.empty())
+  {
+    VECADDONS addons;
+    CAddonDatabase database;
+    database.Open();
+    database.GetAddons(addons);
+    RegisterRemoteAddons(addons);
+  }
+
+  // Get the file extension
+  CStdString extension(URIUtils::GetExtension(path));
+  if (extension.IsEmpty())
+    return false;
+
+  extension.ToLower();
+
+  // If the file is a zip, rake the contents for valid game files
+  if (extension.Equals(".zip"))
+  {
+    CStdString path2;
+    return CGameClient::GetEffectiveRomPath(path, m_remoteExtensions, path2);
+  }
+  return std::find(m_remoteExtensions.begin(), m_remoteExtensions.end(), extension) != m_remoteExtensions.end();
+}
+
+void CGameManager::QueueFile(const CFileItem &file)
+{
+  CSingleLock lock(m_critSection);
+  m_queuedFile = file;
+}
+
+void CGameManager::GetGameClientIDs(const CFileItem& file, CStdStringArray &candidates) const
+{
+  CSingleLock lock(m_critSection);
 
   candidates.clear();
 
@@ -198,8 +267,6 @@ void CGameManager::GetGameClientIDs(const CFileItem& file, CStdStringArray &cand
   CStdString strExtension(URIUtils::GetExtension(file.GetPath()));
   strExtension.ToLower();
 
-  CSingleLock lock(m_critSection);
-
   for (std::vector<GameClientObject>::const_iterator it = m_gameClients.begin(); it != m_gameClients.end(); it++)
   {
     // Skip the game client if it doesn't support the platform. This check is
@@ -226,8 +293,6 @@ void CGameManager::GetGameClientIDs(const CFileItem& file, CStdStringArray &cand
     }
 
     candidates.push_back(it->id);
-    if (max != -1 && (int)candidates.size() >= max)
-      break;
   }
 }
 

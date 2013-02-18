@@ -174,10 +174,9 @@ namespace ADDON
     const CStdStringArray &GetPlatforms() const { return m_platforms; }
 
     /**
-     * Returns the suggested extensions, as provided by the DLL.
-     * Precondition: Init() must be called first and return true.
-     * \return A string delimited by pipes i.e. "bin|rom|iso". This string can
-     *         be empty if the client DLL hasn't implemented it.
+     * Returns the suggested extensions, as provided by the DLL. Initially,
+     * these are loaded from addon.xml. After the first call to Init(), the DLL
+     * is queried and the extensions are overriden by its response.
      */
     const CStdStringArray &GetExtensions() const { return m_validExtensions; }
 

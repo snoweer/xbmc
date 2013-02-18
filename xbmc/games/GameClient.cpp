@@ -270,6 +270,8 @@ CGameClient::CGameClient(const cp_extension_t *ext) : CAddon(ext)
     }
   }
 
+  SetExtensions(CAddonMgr::Get().GetExtValue(ext->configuration, "extensions"));
+
   // If library attribute isn't present, look for a system-dependent one
   if (ext && m_strLibName.IsEmpty())
   {
@@ -615,6 +617,10 @@ void CGameClient::Reset()
 
 void CGameClient::SetExtensions(const CStdString &strExtensionList)
 {
+  // If no extensions are provided, don't erase the ones we are already tracking
+  if (strExtensionList.empty())
+    return;
+
   m_validExtensions.clear();
   CStdStringArray extensions;
   StringUtils::SplitString(strExtensionList, "|", extensions);

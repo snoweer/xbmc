@@ -54,9 +54,25 @@ public:
   void UnregisterAddonByID(const CStdString &ID);
 
   /**
+   * Register the supported extensions of remote add-ons for the purpose of
+   * IsGame() calls.
+   */
+  void RegisterRemoteAddons(const ADDON::VECADDONS &addons);
+
+  /**
+   * Returns true if the file extension is supported by an add-on in an enabled
+   * repository.
+   *
+   * This function causes the queued file to be reset. The purpose of this is
+   * to only invoke the file inside the add-on manager, and IsGame() is called
+   * often enough that leaving the add-on manager will eventually reset it.
+   */
+   bool IsGame(const CStdString& path);
+
+  /**
    * Queue a file to be launched when the corrent game client is installed.
    */
-  void QueueFile(const CFileItem &file) { m_queuedFile = file; }
+  void QueueFile(const CFileItem &file);
 
   /**
    * Resolve a file item to a list of game client IDs. If the file forces a
@@ -67,13 +83,8 @@ public:
    * zip file, the contents of that zip will be used to find suitable
    * candidates (which may yeild multiple if there are several different kinds
    * of ROMs inside).
-   *
-   * resetQueued causes the queued file to be reset. The purpose of this is to
-   * only invoke the file inside the add-on manager, and GetGameClientIDs()
-   * is called often enough that leaving the add-on manager will eventually
-   * reset it.
    */
-  void GetGameClientIDs(const CFileItem& file, CStdStringArray &candidates, int max = -1, bool resetQueued = true);
+  void GetGameClientIDs(const CFileItem& file, CStdStringArray &candidates) const;
 
 private:
   /**
@@ -94,6 +105,7 @@ private:
   };
 
   std::vector<GameClientObject> m_gameClients;
-  CCriticalSection m_critSection; // Guard m_gameClients
+  CCriticalSection m_critSection;
+  CStdStringArray m_remoteExtensions;
   CFileItem m_queuedFile;
 };

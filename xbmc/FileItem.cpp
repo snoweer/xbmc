@@ -837,13 +837,8 @@ bool CFileItem::IsVideo() const
 
   // If the file is a zip file, ask the game clients if any support this file
   // before assuming it is video.
-  if (extension.Equals(".zip"))
-  {
-    CStdStringArray clients;
-    CGameManager::Get().GetGameClientIDs(*this, clients, 1);
-    if (!clients.empty())
-      return false;
-  }
+  if (extension.Equals(".zip") && CGameManager::Get().IsGame(m_strPath))
+    return false;
 
   return (g_settings.m_videoExtensions.Find(extension) != -1);
 }
@@ -924,14 +919,9 @@ bool CFileItem::IsAudio() const
   extension.ToLower();
 
   // If the file is a zip file, ask the game clients if any support this file
-  // before assuming it is video.
-  if (extension.Equals(".zip"))
-  {
-    CStdStringArray clients;
-    CGameManager::Get().GetGameClientIDs(*this, clients, 1);
-    if (!clients.empty())
-      return false;
-  }
+  // before assuming it is audio.
+  if (extension.Equals(".zip") && CGameManager::Get().IsGame(m_strPath))
+    return false;
 
   return (g_settings.m_musicExtensions.Find(extension) != -1);
 }
@@ -944,11 +934,7 @@ bool CFileItem::IsGame() const
   if (HasMusicInfoTag()) return false;
   if (HasPictureInfoTag()) return false;
 
-  // Ask the game clients if any support this file. If none do, the extension
-  // will be screened against the list of extensions in GameManager.cpp.
-  CStdStringArray clients;
-  CGameManager::Get().GetGameClientIDs(*this, clients, 1);
-  return !clients.empty();
+  return CGameManager::Get().IsGame(m_strPath);
 }
 
 bool CFileItem::IsKaraoke() const
