@@ -90,11 +90,15 @@ void CGameManager::RegisterAddon(GameClientPtr clientAddon)
     }
   }
 
+  /* Diabled, adding extensions on startup causes m_remoteExtensions.empty() in
+   * IsGame() to always return false.
+
   // Before loading the DLL, check to see if our database has any extension
   // data (supplied by the <extensions> tag in addon.xml). If this tag is
   // omitted, we must use extension data embedded within the DLL to populate
   // m_remoteExtensions.
   bool missingExtensions = clientAddon->GetExtensions().empty();
+  */
 
   // Load the DLL
   if (!clientAddon->Init())
@@ -108,10 +112,12 @@ void CGameManager::RegisterAddon(GameClientPtr clientAddon)
   clientObject.extensions = clientAddon->GetExtensions();
   TranslatePlatformArray(clientAddon->GetPlatforms(), clientObject.platforms);
 
+  /*
   // If the client wasn't aware of any extensions earlier, RegisterRemoteAddons()
   // won't add anything for this client to m_remoteExtensions, so do that now.
   if (missingExtensions && !clientObject.extensions.empty())
     m_remoteExtensions.insert(m_remoteExtensions.end(), clientObject.extensions.begin(), clientObject.extensions.end());
+  */
 
   // Currently we only store these three fields, so we're all done here
   m_gameClients.push_back(clientObject);
