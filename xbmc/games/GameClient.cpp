@@ -241,6 +241,8 @@ bool CGameClient::IsExtensionValid(const CStdString &ext, const CStdStringArray 
 {
   if (vecExts.empty())
     return true; // Be optimistic :)
+  if (ext.empty())
+    return false;
   CStdString ext2(ext);
   ext2.ToLower();
   if (ext2.at(0) != '.')
@@ -390,6 +392,42 @@ void CGameClient::GetStrategy(CStrategyUseHD &hd, CStrategyUseParentZip &outerzi
     strategies[2] = &hd;
     strategies[3] = &outerzip;
   }
+}
+
+/* static */
+bool CGameClient::CanOpen(const CFileItem &file, const GameClientConfig &config, bool useStrategies /* = false */)
+{
+  // Check gameclient
+  if (!file.GetProperty("gameclient").empty() && file.GetProperty("gameclient").asString() != config.id)
+    return false;
+
+  // Check platform
+  if (!config.platforms.empty() && file.GetGameInfoTag())
+  {
+    GamePlatform id = CGameInfoTagLoader::GetPlatformByName(file.GetGameInfoTag()->GetPlatform()).id;
+    if (id != PLATFORM_UNKNOWN)
+      if (std::find(config.platforms.begin(), config.platforms.end(), id) == config.platforms.end())
+        return false;
+  }
+
+  // Check extension
+  if (!IsExtensionValid(URIUtils::GetExtension(file.GetPath()), config.extensions))
+    return false;
+
+  if (!useStrategies)
+    return true; // all done here
+
+  CStrategyUseHD        hd;
+  CStrategyUseParentZip outerzip;
+  CStrategyUseVFS       vfs;
+  CStrategyEnterZip     innerzip;
+
+  IRetroStrategy *strategy[4] = { &hd, &outerzip, &vfs, &innerzip };
+
+  for (unsigned int i = 0; i < sizeof(strategy) / sizeof(strategy[0]); i++)
+    if (strategy[i]->CanLoad(config, file))
+      return true;
+  return false;
 }
 
 bool CGameClient::OpenFile(const CFileItem& file, const DataReceiver &callbacks)

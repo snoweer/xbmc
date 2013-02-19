@@ -163,7 +163,7 @@ bool CRetroPlayer::OpenFile(const CFileItem& file, const CPlayerOptions& options
   return true;
 }
 
-GameClientPtr CRetroPlayer::InstallGameClient(const CFileItem &file) const
+GameClientPtr CRetroPlayer::InstallGameClient(CFileItem file) const
 {
   // If an explicit game client was specified, try to download that
   if (!file.GetProperty("gameclient").empty())
@@ -180,9 +180,8 @@ GameClientPtr CRetroPlayer::InstallGameClient(const CFileItem &file) const
       GameClientPtr gc;
       CAddonDatabase database;
       database.Open();
-      // TODO: Call gc->CanOpen() for a more thorough check
-      if (database.GetAddon(id, addon) && addon && (gc = boost::dynamic_pointer_cast<CGameClient>(addon)) &&
-          gc->IsExtensionValid(URIUtils::GetExtension(file.GetPath())))
+      if (database.GetAddon(id, addon) && (gc = boost::dynamic_pointer_cast<CGameClient>(addon)) &&
+          gc->CanOpen(file))
       {
         CLog::Log(LOGDEBUG, "RetroPlayer: Installing game client %s", id.c_str());
         addon.reset();
@@ -193,6 +192,7 @@ GameClientPtr CRetroPlayer::InstallGameClient(const CFileItem &file) const
         }
       }
     }
+    file.ClearProperty("gameclient"); // don't want this to interfere later on
   }
 
   // First, ask the user if they would like to install a game client or go to
@@ -216,10 +216,7 @@ GameClientPtr CRetroPlayer::InstallGameClient(const CFileItem &file) const
       if (!(*itRemote)->IsType(ADDON_GAMEDLL))
         continue;
       GameClientPtr gc = boost::dynamic_pointer_cast<CGameClient>(*itRemote);
-      if (!gc || gc->GetConfig().extensions.empty())
-        continue;
-      // TODO: Call gc->CanOpen() for a more thorough check
-      if (gc->IsExtensionValid(URIUtils::GetExtension(file.GetPath()), gc->GetConfig().extensions))
+      if (gc && !gc->GetConfig().extensions.empty() && gc->CanOpen(file))
       {
         emuChoices.Add(candidates.size(), gc->Name());
         candidates.push_back(gc->ID());

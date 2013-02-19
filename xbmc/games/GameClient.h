@@ -184,6 +184,13 @@ namespace ADDON
     // Cleanly shut down and unload the DLL.
     void DeInit();
 
+    /**
+     * Perform the gamut of checks on the file - "gameclient" property, platform,
+     * extension, and a positive match on at least one of the above strategies.
+     */
+    static bool CanOpen(const CFileItem &file, const GameClientConfig &config, bool useStrategies = false);
+    bool CanOpen(const CFileItem &file, bool useStrategies = false) const { return CanOpen(file, m_config, useStrategies); }
+
     bool OpenFile(const CFileItem &file, const DataReceiver &callbacks);
     void CloseFile();
 
