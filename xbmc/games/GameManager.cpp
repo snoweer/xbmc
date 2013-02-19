@@ -188,15 +188,32 @@ void CGameManager::RegisterRemoteAddons(const VECADDONS &addons)
 
   m_remoteExtensions.clear();
 
-  for (VECADDONS::const_iterator it = addons.begin(); it != addons.end(); it++)
+  for (VECADDONS::const_iterator itRemote = addons.begin(); itRemote != addons.end(); itRemote++)
   {
-    if ((*it)->IsType(ADDON_GAMEDLL))
+    GameClientPtr gc;
+
+    if (!(*itRemote)->IsType(ADDON_GAMEDLL) || !(gc = boost::dynamic_pointer_cast<CGameClient>(*itRemote)))
+      continue;
+
+    if (!gc->GetExtensions().empty())
     {
-      GameClientPtr gc = boost::dynamic_pointer_cast<CGameClient>(*it);
-      if (gc)
+      // Extensions were specified in addon.xml
+      m_remoteExtensions.insert(m_remoteExtensions.end(), gc->GetExtensions().begin(), gc->GetExtensions().end());
+    }
+    else
+    {
+      // No extensions listed in addon.xml. If installed, get the extensions from the DLL.
+      CLog::Log(LOGDEBUG, "CGameManager - No extensions for %s v%s in addon.xml",
+          gc->ID().c_str(), gc->Version().c_str());
+
+      for (std::vector<GameClientObject>::iterator itLocal = m_gameClients.begin(); itLocal != m_gameClients.end(); itLocal++)
       {
-        CStdStringArray exts = gc->GetExtensions();
-        m_remoteExtensions.insert(m_remoteExtensions.end(), exts.begin(), exts.end());
+        if (itLocal->id == (*itRemote)->ID())
+        {
+          m_remoteExtensions.insert(m_remoteExtensions.end(), itLocal->extensions.begin(), itLocal->extensions.end());
+          CLog::Log(LOGDEBUG, "CGameManager - Extensions for %s found in DLL", gc->ID().c_str());
+          break;
+        }
       }
     }
   }
