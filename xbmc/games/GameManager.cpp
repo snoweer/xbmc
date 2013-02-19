@@ -80,7 +80,7 @@ void CGameManager::RegisterAddon(GameClientPtr clientAddon)
   CSingleLock lock(m_critSection);
 
   // If we are already tracking the add-on, erase it so we can refresh the data
-  for (std::vector<GameClientObject>::iterator it = m_gameClients.begin(); it != m_gameClients.end(); it++)
+  for (std::vector<GameClientConfig>::iterator it = m_gameClients.begin(); it != m_gameClients.end(); it++)
   {
     if (clientAddon->ID() == it->id)
     {
@@ -90,16 +90,6 @@ void CGameManager::RegisterAddon(GameClientPtr clientAddon)
     }
   }
 
-  /* Diabled, adding extensions on startup causes m_remoteExtensions.empty() in
-   * IsGame() to always return false.
-
-  // Before loading the DLL, check to see if our database has any extension
-  // data (supplied by the <extensions> tag in addon.xml). If this tag is
-  // omitted, we must use extension data embedded within the DLL to populate
-  // m_remoteExtensions.
-  bool missingExtensions = clientAddon->GetExtensions().empty();
-  */
-
   // Load the DLL
   if (!clientAddon->Init())
   {
@@ -107,20 +97,7 @@ void CGameManager::RegisterAddon(GameClientPtr clientAddon)
     return;
   }
 
-  GameClientObject clientObject;
-  clientObject.id = clientAddon->ID();
-  clientObject.extensions = clientAddon->GetExtensions();
-  TranslatePlatformArray(clientAddon->GetPlatforms(), clientObject.platforms);
-
-  /*
-  // If the client wasn't aware of any extensions earlier, RegisterRemoteAddons()
-  // won't add anything for this client to m_remoteExtensions, so do that now.
-  if (missingExtensions && !clientObject.extensions.empty())
-    m_remoteExtensions.insert(m_remoteExtensions.end(), clientObject.extensions.begin(), clientObject.extensions.end());
-  */
-
-  // Currently we only store these three fields, so we're all done here
-  m_gameClients.push_back(clientObject);
+  m_gameClients.push_back(clientAddon->GetConfig());
 
   // Unload the DLL
   clientAddon->DeInit();
@@ -132,7 +109,7 @@ void CGameManager::RegisterAddon(GameClientPtr clientAddon)
     // Test if the new client can launch the file. Backup the file first
     // because GetGameClientIDs() will reset it.
     CStdStringArray candidates;
-    CGameManager::Get().GetGameClientIDs(m_queuedFile, candidates);
+    GetGameClientIDs(m_queuedFile, candidates);
     if (std::find(candidates.begin(), candidates.end(), clientAddon->ID()) != candidates.end())
     {
       // We can launch the file with clientAddon, if the user answers yes then do so
@@ -176,7 +153,7 @@ void CGameManager::UnregisterAddonByID(const CStdString &ID)
 {
   CSingleLock lock(m_critSection);
 
-  for (std::vector<GameClientObject>::iterator it = m_gameClients.begin(); it != m_gameClients.end(); it++)
+  for (std::vector<GameClientConfig>::iterator it = m_gameClients.begin(); it != m_gameClients.end(); it++)
     if (ID == it->id)
       { m_gameClients.erase(it); return; }
   CLog::Log(LOGERROR, "CGameManager: can't unregister %s - not registered!", ID.c_str());
@@ -199,10 +176,11 @@ void CGameManager::RegisterRemoteAddons(const VECADDONS &addons)
     if (!gc)
       gc = GameClientPtr(new CGameClient(remote->Props()));
 
-    if (!gc->GetExtensions().empty())
+    if (!gc->GetConfig().extensions.empty())
     {
       // Extensions were specified in addon.xml
-      m_remoteExtensions.insert(m_remoteExtensions.end(), gc->GetExtensions().begin(), gc->GetExtensions().end());
+      m_remoteExtensions.insert(m_remoteExtensions.end(), gc->GetConfig().extensions.begin(),
+          gc->GetConfig().extensions.end());
     }
     else
     {
@@ -210,7 +188,7 @@ void CGameManager::RegisterRemoteAddons(const VECADDONS &addons)
       CLog::Log(LOGDEBUG, "CGameManager - No extensions for %s v%s in addon.xml",
           gc->ID().c_str(), gc->Version().c_str());
 
-      for (std::vector<GameClientObject>::iterator itLocal = m_gameClients.begin(); itLocal != m_gameClients.end(); itLocal++)
+      for (std::vector<GameClientConfig>::iterator itLocal = m_gameClients.begin(); itLocal != m_gameClients.end(); itLocal++)
       {
         if (itLocal->id == remote->ID())
         {
@@ -274,7 +252,7 @@ void CGameManager::GetGameClientIDs(const CFileItem& file, CStdStringArray &cand
   if (!file.GetProperty("gameclient").empty())
   {
     CStdString id = file.GetProperty("gameclient").asString();
-    for (std::vector<GameClientObject>::const_iterator it = m_gameClients.begin(); it != m_gameClients.end(); it++)
+    for (std::vector<GameClientConfig>::const_iterator it = m_gameClients.begin(); it != m_gameClients.end(); it++)
     {
       if (it->id == id)
         { candidates.push_back(id); break; }
@@ -294,7 +272,7 @@ void CGameManager::GetGameClientIDs(const CFileItem& file, CStdStringArray &cand
   CStdString strExtension(URIUtils::GetExtension(file.GetPath()));
   strExtension.ToLower();
 
-  for (std::vector<GameClientObject>::const_iterator it = m_gameClients.begin(); it != m_gameClients.end(); it++)
+  for (std::vector<GameClientConfig>::const_iterator it = m_gameClients.begin(); it != m_gameClients.end(); it++)
   {
     // Skip the game client if it doesn't support the platform. This check is
     // only done if both the game client lists at least one valid platform, and
@@ -320,17 +298,5 @@ void CGameManager::GetGameClientIDs(const CFileItem& file, CStdStringArray &cand
     }
 
     candidates.push_back(it->id);
-  }
-}
-
-/* static */
-void CGameManager::TranslatePlatformArray(const CStdStringArray &strPlatforms, GamePlatformArray &vecPlatforms)
-{
-  vecPlatforms.clear();
-  for (CStdStringArray::const_iterator it = strPlatforms.begin(); it != strPlatforms.end(); it++)
-  {
-    GamePlatform id = CGameInfoTagLoader::GetPlatformByName(*it).id;
-    if (id != PLATFORM_UNKNOWN)
-      vecPlatforms.push_back(id);
   }
 }

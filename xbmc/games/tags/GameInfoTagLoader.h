@@ -117,6 +117,8 @@ namespace GAME_INFO
     PLATFORM_ZX_SPECTR            = 41,
   };
 
+  typedef std::vector<GamePlatform> GamePlatformArray;
+
   struct PlatformInfo
   {
     GamePlatform    id;

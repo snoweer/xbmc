@@ -36,6 +36,7 @@
 #include <boost/shared_ptr.hpp>
 
 using namespace ADDON;
+using namespace GAME_INFO;
 using namespace XFILE;
 
 
@@ -90,7 +91,7 @@ bool CGameClient::IRetroStrategy::GetGameInfo(retro_game_info &info) const
   return true;
 }
 
-bool CGameClient::CStrategyUseHD::CanLoad(const CGameClient &gc, const CFileItem& file)
+bool CGameClient::CStrategyUseHD::CanLoad(const GameClientConfig &gc, const CFileItem& file)
 {
   CLog::Log(LOGINFO, "GameClient::CStrategyUseHD: Testing if we can load game from hard drive");
 
@@ -102,7 +103,7 @@ bool CGameClient::CStrategyUseHD::CanLoad(const CGameClient &gc, const CFileItem
   }
 
   // Make sure the extension is valid
-  if (!gc.IsExtensionValid(URIUtils::GetExtension(file.GetPath())))
+  if (!IsExtensionValid(URIUtils::GetExtension(file.GetPath()), gc.extensions))
   {
     CLog::Log(LOGINFO, "GameClient::CStrategyUseHD: Extension %s is not valid", URIUtils::GetExtension(file.GetPath()).c_str());
     return false;
@@ -113,12 +114,12 @@ bool CGameClient::CStrategyUseHD::CanLoad(const CGameClient &gc, const CFileItem
   return true;
 }
 
-bool CGameClient::CStrategyUseVFS::CanLoad(const CGameClient &gc, const CFileItem& file)
+bool CGameClient::CStrategyUseVFS::CanLoad(const GameClientConfig &gc, const CFileItem& file)
 {
   CLog::Log(LOGINFO, "GameClient::CStrategyUseVFS: Testing if we can load game from VFS");
 
   // Obvious check
-  if (!gc.AllowsVFS())
+  if (!gc.bAllowVFS)
   {
     CLog::Log(LOGINFO, "GameClient::CStrategyUseVFS: Game client does not allow VFS");
     return false;
@@ -126,7 +127,7 @@ bool CGameClient::CStrategyUseVFS::CanLoad(const CGameClient &gc, const CFileIte
 
   // Make sure the extension is valid
   CStdString ext = URIUtils::GetExtension(file.GetPath());
-  if (!gc.IsExtensionValid(ext))
+  if (!IsExtensionValid(ext, gc.extensions))
   {
     CLog::Log(LOGINFO, "GameClient::CStrategyUseVFS: Extension %s is not valid", ext.c_str());
     return false;
@@ -137,7 +138,7 @@ bool CGameClient::CStrategyUseVFS::CanLoad(const CGameClient &gc, const CFileIte
   return true;
 }
 
-bool CGameClient::CStrategyUseParentZip::CanLoad(const CGameClient &gc, const CFileItem& file)
+bool CGameClient::CStrategyUseParentZip::CanLoad(const GameClientConfig &gc, const CFileItem& file)
 {
   CLog::Log(LOGINFO, "GameClient::CStrategyUseParentZip: Testing if the game is in a zip");
 
@@ -148,7 +149,7 @@ bool CGameClient::CStrategyUseParentZip::CanLoad(const CGameClient &gc, const CF
     return false;
   }
 
-  if (!gc.IsExtensionValid("zip"))
+  if (!IsExtensionValid(".zip", gc.extensions))
   {
     CLog::Log(LOGINFO, "GameClient::CStrategyUseParentZip: This game client does not support zip files");
     return false;
@@ -175,7 +176,7 @@ bool CGameClient::CStrategyUseParentZip::CanLoad(const CGameClient &gc, const CF
   return true;
 }
 
-bool CGameClient::CStrategyEnterZip::CanLoad(const CGameClient &gc, const CFileItem& file)
+bool CGameClient::CStrategyEnterZip::CanLoad(const GameClientConfig &gc, const CFileItem& file)
 {
   CLog::Log(LOGINFO, "GameClient::CStrategyEnterZip: Testing if the file is a zip containing a game");
 
@@ -187,7 +188,7 @@ bool CGameClient::CStrategyEnterZip::CanLoad(const CGameClient &gc, const CFileI
   }
 
   // Must support loading from the vfs
-  if (!gc.AllowsVFS())
+  if (!gc.bAllowVFS)
   {
     CLog::Log(LOGINFO, "GameClient::CStrategyEnterZip: Game client does not allow VFS");
     return false;
@@ -195,7 +196,7 @@ bool CGameClient::CStrategyEnterZip::CanLoad(const CGameClient &gc, const CFileI
 
   // Look for an internal file. This will screen against valid extensions.
   CStdString internalFile;
-  if (!gc.GetEffectiveRomPath(file.GetPath(), gc.GetExtensions(), internalFile))
+  if (!GetEffectiveRomPath(file.GetPath(), gc.extensions, internalFile))
   {
     CLog::Log(LOGINFO, "GameClient::CStrategyEnterZip: Zip does not contain a file with a valid extension");
     return false;
@@ -209,7 +210,6 @@ bool CGameClient::CStrategyEnterZip::CanLoad(const CGameClient &gc, const CFileI
 
 CGameClient::DataReceiver::SetPixelFormat_t       CGameClient::_SetPixelFormat      = NULL;
 CGameClient::DataReceiver::SetKeyboardCallback_t  CGameClient::_SetKeyboardCallback = NULL;
-
 
 /* static */
 bool CGameClient::GetEffectiveRomPath(const CStdString &zipPath, const CStdStringArray &validExts, CStdString &effectivePath)
@@ -236,13 +236,16 @@ bool CGameClient::GetEffectiveRomPath(const CStdString &zipPath, const CStdStrin
   return false;
 }
 
-bool CGameClient::IsExtensionValid(const CStdString &ext) const
+/* static */
+bool CGameClient::IsExtensionValid(const CStdString &ext, const CStdStringArray &vecExts)
 {
-  if (m_validExtensions.empty())
+  if (vecExts.empty())
     return true; // Be optimistic :)
   CStdString ext2(ext);
   ext2.ToLower();
-  return std::find(m_validExtensions.begin(), m_validExtensions.end(), ext2) != m_validExtensions.end();
+  if (ext2.at(0) != '.')
+    ext2 = "." + ext2;
+  return std::find(vecExts.begin(), vecExts.end(), ext2) != vecExts.end();
 }
 
 CGameClient::CGameClient(const AddonProps &props) : CAddon(props)
@@ -298,10 +301,10 @@ CGameClient::CGameClient(const cp_extension_t *ext) : CAddon(ext)
 
 void CGameClient::Initialize()
 {
+  m_config = GameClientConfig(); // TODO: necessary?
+  m_config.id = ID();
   m_bIsInited = false;
   m_bIsPlaying = false;
-  m_bAllowVFS = false;
-  m_bRequireZip = false;
   m_frameRate = 0.0;
   m_sampleRate = 0.0;
   m_region = -1; // invalid
@@ -322,11 +325,11 @@ bool CGameClient::Init()
 
   retro_system_info info = { };
   m_dll.retro_get_system_info(&info);
-  m_clientName      = info.library_name ? info.library_name : "Unknown";
-  m_clientVersion   = info.library_version ? info.library_version : "v0.0";
-  SetExtensions(info.valid_extensions ? info.valid_extensions : ""); // Set m_validExtensions
-  m_bAllowVFS       = !info.need_fullpath;
-  m_bRequireZip     = info.block_extract;
+  m_clientName         = info.library_name ? info.library_name : "Unknown";
+  m_clientVersion      = info.library_version ? info.library_version : "v0.0";
+  m_config.bAllowVFS   = !info.need_fullpath;
+  m_config.bRequireZip = info.block_extract;
+  SetExtensions(info.valid_extensions ? info.valid_extensions : "");
   CLog::Log(LOGINFO, "GameClient: Loaded %s core at version %s", m_clientName.c_str(), m_clientVersion.c_str());
 
   // Verify API versions
@@ -341,7 +344,8 @@ bool CGameClient::Init()
   CLog::Log(LOGINFO, "GameClient: Loaded DLL for %s", ID().c_str());
   CLog::Log(LOGINFO, "GameClient: Client: %s at version %s", m_clientName.c_str(), m_clientVersion.c_str());
   CLog::Log(LOGINFO, "GameClient: Valid extensions: %s", info.valid_extensions ? info.valid_extensions : "-");
-  CLog::Log(LOGINFO, "GameClient: Allow VFS: %s, require zip (block extract): %s", m_bAllowVFS ? "yes" : "no", m_bRequireZip ? "yes" : "no");
+  CLog::Log(LOGINFO, "GameClient: Allow VFS: %s, require zip (block extract): %s", m_config.bAllowVFS ? "yes" : "no",
+      m_config.bRequireZip ? "yes" : "no");
   CLog::Log(LOGINFO, "GameClient: ------------------------------------");
 
   return true;
@@ -363,6 +367,28 @@ void CGameClient::DeInit()
     {
       CLog::Log(LOGERROR, "GameClient: Error unloading DLL: %s", e.what());
     }
+  }
+}
+
+/* static */
+void CGameClient::GetStrategy(CStrategyUseHD &hd, CStrategyUseParentZip &outerzip,
+      CStrategyUseVFS &vfs, CStrategyEnterZip &innerzip, IRetroStrategy *strategies[4])
+{
+  if (!g_advancedSettings.m_bPreferVFS)
+  {
+    // Passing file names comes first
+    strategies[0] = &hd;
+    strategies[1] = &outerzip;
+    strategies[2] = &vfs;
+    strategies[3] = &innerzip;
+  }
+  else
+  {
+    // Loading through VFS comes first
+    strategies[0] = &vfs;
+    strategies[1] = &innerzip;
+    strategies[2] = &hd;
+    strategies[3] = &outerzip;
   }
 }
 
@@ -400,23 +426,18 @@ bool CGameClient::OpenFile(const CFileItem& file, const DataReceiver &callbacks)
 
   retro_game_info info;
 
-  CStrategyUseHD        s1;
-  CStrategyUseParentZip s2;
-  CStrategyUseVFS       s3;
-  CStrategyEnterZip     s4;
+  CStrategyUseHD        hd;
+  CStrategyUseParentZip outerzip;
+  CStrategyUseVFS       vfs;
+  CStrategyEnterZip     innerzip;
 
-  IRetroStrategy *strategies[] = {&s1, &s2, &s3, &s4};
-
-  if (g_advancedSettings.m_bPreferVFS)
-  {
-    std::swap(strategies[0], strategies[2]);
-    std::swap(strategies[1], strategies[3]);
-  }
+  IRetroStrategy *strategy[4];
+  GetStrategy(hd, outerzip, vfs, innerzip, strategy);
 
   bool success = false;
-  for (unsigned int i = 0; i < sizeof(strategies) / sizeof(strategies[0]); i++)
+  for (unsigned int i = 0; i < sizeof(strategy) / sizeof(strategy[0]); i++)
   {
-    if (strategies[i]->CanLoad(*this, file) && strategies[i]->GetGameInfo(info))
+    if (strategy[i]->CanLoad(m_config, file) && strategy[i]->GetGameInfo(info))
     {
       if (m_dll.retro_load_game(&info))
       {
@@ -628,7 +649,7 @@ void CGameClient::SetExtensions(const CStdString &strExtensionList)
   if (strExtensionList.empty())
     return;
 
-  m_validExtensions.clear();
+  m_config.extensions.clear();
   CStdStringArray extensions;
   StringUtils::SplitString(strExtensionList, "|", extensions);
   for (CStdStringArray::const_iterator it = extensions.begin(); it != extensions.end(); it++)
@@ -646,8 +667,8 @@ void CGameClient::SetExtensions(const CStdString &strExtensionList)
     if (ext.Equals(".zip") && !g_advancedSettings.m_bAllowZip)
       continue;
 
-    if (std::find(m_validExtensions.begin(), m_validExtensions.end(), ext) == m_validExtensions.end())
-      m_validExtensions.push_back(ext);
+    if (std::find(m_config.extensions.begin(), m_config.extensions.end(), ext) == m_config.extensions.end())
+      m_config.extensions.push_back(ext);
   }
 }
 
@@ -657,14 +678,15 @@ void CGameClient::SetPlatforms(const CStdString &strPlatformList)
   if (strPlatformList.empty())
     return;
 
-  m_platforms.clear();
+  m_config.platforms.clear();
   CStdStringArray platforms;
   StringUtils::SplitString(strPlatformList, "|", platforms);
   for (CStdStringArray::iterator it = platforms.begin(); it != platforms.end(); it++)
   {
     it->Trim();
-    if (!it->empty())
-      m_platforms.push_back(*it);
+    GamePlatform id = CGameInfoTagLoader::GetPlatformByName(*it).id;
+    if (id != PLATFORM_UNKNOWN)
+      m_config.platforms.push_back(id);
   }
 }
 

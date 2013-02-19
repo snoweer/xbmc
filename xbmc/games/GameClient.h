@@ -24,6 +24,7 @@
 #include "addons/Addon.h"
 #include "FileItem.h"
 #include "GameClientDLL.h"
+#include "games/tags/GameInfoTagLoader.h"
 
 #include <deque>
 #include <vector>
@@ -34,6 +35,28 @@
 
 namespace ADDON
 {
+  /**
+   * The core configuration parameters of game clients have been put in a self-
+   * contained struct. This way, CGameManager can perform logic operations using
+   * config objects as a representation of the game client, without actually
+   * holding a pointer to an entire game client. Only data pertinent to
+   * CGameManager is currently placed in this class.
+   */
+  struct GameClientConfig
+  {
+    CStdString                   id;          // Set from addon.xml
+    CStdStringArray              extensions;  // Set from addon.xml. Updated when the DLL is loaded
+    GAME_INFO::GamePlatformArray platforms;   // Set from addon.xml
+    bool                         bAllowVFS;   // Set when the DLL is loaded
+    /**
+     * If false, and ROM is in a zip, ROM file must be loaded from within the
+     * zip instead of extracted to a temporary cache. In XBMC's case, loading
+     * from the VFS is like extraction because the relative paths to the
+     * ROM's other files are not available to the emulator.
+     */
+    bool                         bRequireZip; // Set when the DLL is loaded
+  };
+
   class CGameClient;
   typedef boost::shared_ptr<CGameClient> GameClientPtr;
 
@@ -58,7 +81,7 @@ namespace ADDON
        * with the file that should be loaded, either the original file or a
        * substitute file.
        */
-      virtual bool CanLoad(const CGameClient &gc, const CFileItem& file) = 0;
+      virtual bool CanLoad(const GameClientConfig &gc, const CFileItem& file) = 0;
       /**
        * Populates retro_game_info with results.
        */
@@ -76,7 +99,7 @@ namespace ADDON
     class CStrategyUseHD : public IRetroStrategy
     {
     public:
-      virtual bool CanLoad(const CGameClient &gc, const CFileItem& file);
+      virtual bool CanLoad(const GameClientConfig &gc, const CFileItem& file);
     };
 
     /**
@@ -85,7 +108,7 @@ namespace ADDON
     class CStrategyUseVFS : public IRetroStrategy
     {
     public:
-      virtual bool CanLoad(const CGameClient &gc, const CFileItem& file);
+      virtual bool CanLoad(const GameClientConfig &gc, const CFileItem& file);
     };
 
     /**
@@ -96,7 +119,7 @@ namespace ADDON
     class CStrategyUseParentZip : public IRetroStrategy
     {
     public:
-      virtual bool CanLoad(const CGameClient &gc, const CFileItem& file);
+      virtual bool CanLoad(const GameClientConfig &gc, const CFileItem& file);
     };
 
     /**
@@ -106,7 +129,7 @@ namespace ADDON
     class CStrategyEnterZip : public IRetroStrategy
     {
     public:
-      virtual bool CanLoad(const CGameClient &gc, const CFileItem& file);
+      virtual bool CanLoad(const GameClientConfig &gc, const CFileItem& file);
     };
 
     /**
@@ -141,6 +164,8 @@ namespace ADDON
      */
     static bool GetEffectiveRomPath(const CStdString &zipPath, const CStdStringArray &validExts, CStdString &effectivePath);
 
+    static bool IsExtensionValid(const CStdString &ext, const CStdStringArray &vecExts);
+
     CGameClient(const AddonProps &props);
     CGameClient(const cp_extension_t *props);
     virtual ~CGameClient() { DeInit(); }
@@ -151,34 +176,8 @@ namespace ADDON
      */
     bool Init();
 
-    /**
-     * Cleanly shut down and unload the DLL.
-     */
+    // Cleanly shut down and unload the DLL.
     void DeInit();
-
-    /**
-     * Returns true after Init() is called and until DeInit() is called.
-     */
-    bool IsInitialized() const { return m_dll.IsLoaded(); }
-
-    /**
-     * Precondition: Init() must be called first and return true.
-     */
-    const CStdString &GetClientName() const { return m_clientName; }
-
-    /**
-     * Precondition: Init() must be called first and return true.
-     */
-    const CStdString &GetClientVersion() const { return m_clientVersion; }
-
-    const CStdStringArray &GetPlatforms() const { return m_platforms; }
-
-    /**
-     * Returns the suggested extensions, as provided by the DLL. Initially,
-     * these are loaded from addon.xml. After the first call to Init(), the DLL
-     * is queried and the extensions are overriden by its response.
-     */
-    const CStdStringArray &GetExtensions() const { return m_validExtensions; }
 
     /**
      * If the game client was a bad boy and provided no extensions, this will
@@ -186,21 +185,19 @@ namespace ADDON
      */
     bool IsExtensionValid(const CStdString &ext) const;
 
-    /**
-     * The game client allows files to be loaded with no local path.
-     */
-    bool AllowsVFS() const { return m_bAllowVFS; }
-
-    /**
-     * If false, and ROM is in a zip, ROM file must be loaded from within the
-     * zip instead of extracted to a temporary cache. In XBMC's case, loading
-     * from the VFS is like extraction because the relative paths to the
-     * emulator are not available.
-     */
-    bool BlockZipExtraction() const { return m_bRequireZip; }
-
     bool OpenFile(const CFileItem &file, const DataReceiver &callbacks);
     void CloseFile();
+
+    // Returns true after Init() is called and until DeInit() is called.
+    bool IsInitialized() const { return m_dll.IsLoaded(); }
+
+    const GameClientConfig &GetConfig() const { return m_config; }
+
+    // Precondition: Init() must be called first and return true.
+    const CStdString &GetClientName() const { return m_clientName; }
+
+    // Precondition: Init() must be called first and return true.
+    const CStdString &GetClientVersion() const { return m_clientVersion; }
 
     /**
      * Find the region of a currently running game. The return value will be
@@ -258,6 +255,13 @@ namespace ADDON
     void Initialize();
 
     /**
+     * Given the strategies above, order them in the way that respects
+     * g_advancedSettings.m_bPreferVFS.
+     */
+    static void GetStrategy(CStrategyUseHD &hd, CStrategyUseParentZip &outerzip,
+        CStrategyUseVFS &vfs, CStrategyEnterZip &innerzip, IRetroStrategy *strategies[4]);
+
+    /**
      * Parse a pipe-separated list, returned from the game client, into an
      * array. The extensions list can contain both upper and lower case
      * extensions; only lower-case extensions are stored in m_validExtensions.
@@ -269,18 +273,18 @@ namespace ADDON
     static DataReceiver::SetPixelFormat_t _SetPixelFormat; // called by EnvironmentCallback()
     static DataReceiver::SetKeyboardCallback_t _SetKeyboardCallback; // called by EnvironmentCallback()
 
-    GameClientDLL   m_dll;
-    CStdStringArray m_platforms;
-    bool            m_bIsInited; // Keep track of whether m_dll.retro_init() has been called
-    bool            m_bIsPlaying; // This is true between retro_load_game() and retro_unload_game()
-    CStdString      m_clientName;
-    CStdString      m_clientVersion;
-    CStdStringArray m_validExtensions;
-    bool            m_bAllowVFS; // Allow files with no local path
-    bool            m_bRequireZip; // Don't use VFS for zip files, pass zip path directly
-    double          m_frameRate; // Video framerate
-    double          m_sampleRate; // Audio frequency
-    int             m_region; // Region of the loaded game
+    GameClientConfig m_config;
+
+    GameClientDLL    m_dll;
+    bool             m_bIsInited; // Keep track of whether m_dll.retro_init() has been called
+    bool             m_bIsPlaying; // This is true between retro_load_game() and retro_unload_game()
+
+    // Returned by m_dll:
+    CStdString       m_clientName;
+    CStdString       m_clientVersion;
+    double           m_frameRate; // Video framerate
+    double           m_sampleRate; // Audio frequency
+    int              m_region; // Region of the loaded game
 
     CCriticalSection m_critSection;
     bool m_rewindSupported;

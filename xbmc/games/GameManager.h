@@ -22,11 +22,9 @@
 #pragma once
 
 #include "GameClient.h"
-#include "games/tags/GameInfoTagLoader.h"
 #include "FileItem.h"
 #include "threads/CriticalSection.h"
 
-typedef std::vector<GAME_INFO::GamePlatform> GamePlatformArray;
 
 /**
  * The main function of CGameManager is resolving file items into CGameClients.
@@ -87,24 +85,7 @@ public:
   void GetGameClientIDs(const CFileItem& file, CStdStringArray &candidates) const;
 
 private:
-  /**
-   * Generate a GamePlatformArray from an array of strings. If a string isn't
-   * recognized as a valid game platform, it is ommited from the output array.
-   */
-  static void TranslatePlatformArray(const CStdStringArray &strPlatforms, GamePlatformArray &vecPlatforms);
-  
-  /**
-   * Pertinent information captured by the game client add-on. We use these
-   * objects as a cache to avoid loading the DLL every time.
-   */
-  struct GameClientObject
-  {
-    CStdString        id;
-    CStdStringArray   extensions;
-    GamePlatformArray platforms;
-  };
-
-  std::vector<GameClientObject> m_gameClients;
+  std::vector<ADDON::GameClientConfig> m_gameClients;
   CCriticalSection m_critSection;
   CStdStringArray m_remoteExtensions;
   CFileItem m_queuedFile;
