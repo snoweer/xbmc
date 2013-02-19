@@ -320,7 +320,7 @@ void CAdvancedSettings::Initialize()
 
   m_iGameAudioBuffer = 500;
   m_bPreferVFS = false;
-  m_bAllowZip = false;
+  m_bAllowZip = true;
 
   m_databaseMusic.Reset();
   m_databaseVideo.Reset();
