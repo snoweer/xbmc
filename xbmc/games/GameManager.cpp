@@ -190,10 +190,14 @@ void CGameManager::RegisterRemoteAddons(const VECADDONS &addons)
 
   for (VECADDONS::const_iterator itRemote = addons.begin(); itRemote != addons.end(); itRemote++)
   {
-    GameClientPtr gc;
-
-    if (!(*itRemote)->IsType(ADDON_GAMEDLL) || !(gc = boost::dynamic_pointer_cast<CGameClient>(*itRemote)))
+    AddonPtr remote = *itRemote;
+    if (!remote->IsType(ADDON_GAMEDLL))
       continue;
+
+    GameClientPtr gc = boost::dynamic_pointer_cast<CGameClient>(remote);
+    // If it wasn't created polymorphically, do so now
+    if (!gc)
+      gc = GameClientPtr(new CGameClient(remote->Props()));
 
     if (!gc->GetExtensions().empty())
     {
@@ -208,7 +212,7 @@ void CGameManager::RegisterRemoteAddons(const VECADDONS &addons)
 
       for (std::vector<GameClientObject>::iterator itLocal = m_gameClients.begin(); itLocal != m_gameClients.end(); itLocal++)
       {
-        if (itLocal->id == (*itRemote)->ID())
+        if (itLocal->id == remote->ID())
         {
           m_remoteExtensions.insert(m_remoteExtensions.end(), itLocal->extensions.begin(), itLocal->extensions.end());
           CLog::Log(LOGDEBUG, "CGameManager - Extensions for %s found in DLL", gc->ID().c_str());

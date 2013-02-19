@@ -165,6 +165,17 @@ AddonProps::AddonProps(const cp_extension_t *ext)
     EMPTY_IF("noicon",icon)
     EMPTY_IF("nochangelog",changelog)
   }
+
+  // If extending xbmc.gameclient, load additional game client info
+  if (type == ADDON_GAMEDLL)
+  {
+    CStdString platforms = CAddonMgr::Get().GetTranslatedString(ext->configuration, "platforms");
+    if (!platforms.empty())
+      extrainfo.insert(make_pair("platforms", platforms));
+    CStdString extensions = CAddonMgr::Get().GetTranslatedString(ext->configuration, "extensions");
+    if (!extensions.empty())
+      extrainfo.insert(make_pair("extensions", extensions));
+  }
   BuildDependencies(ext->plugin);
 }
 

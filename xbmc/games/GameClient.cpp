@@ -248,35 +248,42 @@ bool CGameClient::IsExtensionValid(const CStdString &ext) const
 CGameClient::CGameClient(const AddonProps &props) : CAddon(props)
 {
   Initialize();
+
+  try { SetPlatforms(props.extrainfo.at("platforms")); }
+  catch (...) { }
+
+  try { SetExtensions(props.extrainfo.at("extensions")); }
+  catch (...) { }
 }
 
 CGameClient::CGameClient(const cp_extension_t *ext) : CAddon(ext)
 {
   Initialize();
 
-  m_platforms.clear();
-  if (ext)
-  {
-    // Platforms list is pipe-separated
-    CStdString strPlatforms = CAddonMgr::Get().GetExtValue(ext->configuration, "platforms");
-    CStdStringArray platforms;
-    StringUtils::SplitString(strPlatforms, "|", platforms);
+  if (!ext)
+    return;
 
-    for (CStdStringArray::iterator it = platforms.begin(); it != platforms.end(); it++)
-    {
-      it->Trim();
-      if (!it->empty())
-        m_platforms.push_back(*it);
-    }
+  CStdString platforms;
+  platforms = CAddonMgr::Get().GetExtValue(ext->configuration, "platforms");
+  if (!platforms.IsEmpty())
+  {
+    Props().extrainfo.insert(make_pair("platforms", platforms));
+    SetPlatforms(platforms);
   }
 
-  SetExtensions(CAddonMgr::Get().GetExtValue(ext->configuration, "extensions"));
+  CStdString extensions;
+  extensions = CAddonMgr::Get().GetExtValue(ext->configuration, "extensions");
+  if (!extensions.IsEmpty())
+  {
+    Props().extrainfo.insert(make_pair("extensions", extensions));
+    SetExtensions(extensions);
+  }
 
   // If library attribute isn't present, look for a system-dependent one
-  if (ext && m_strLibName.IsEmpty())
+  if (m_strLibName.IsEmpty())
   {
 #if defined(TARGET_ANDROID)
-  m_strLibName = CAddonMgr::Get().GetExtValue(ext->configuration, "@library_android");
+    m_strLibName = CAddonMgr::Get().GetExtValue(ext->configuration, "@library_android");
 #elif defined(_LINUX) && !defined(TARGET_DARWIN)
     m_strLibName = CAddonMgr::Get().GetExtValue(ext->configuration, "@library_linux");
 #elif defined(_WIN32) && defined(HAS_SDL_OPENGL)
@@ -624,21 +631,40 @@ void CGameClient::SetExtensions(const CStdString &strExtensionList)
   m_validExtensions.clear();
   CStdStringArray extensions;
   StringUtils::SplitString(strExtensionList, "|", extensions);
-  for (CStdStringArray::iterator it = extensions.begin(); it != extensions.end(); it++)
+  for (CStdStringArray::const_iterator it = extensions.begin(); it != extensions.end(); it++)
   {
-    if (it->empty())
+    CStdString ext(*it);
+    if (ext.empty())
       continue;
+
+    ext.ToLower();
+    if (ext.at(0) != '.')
+      ext = "." + ext;
 
     // Zip crashes every emulator I've tried so far
     // Skip it unless enabled via advanced settings
-    if (it->Equals("zip") && !g_advancedSettings.m_bAllowZip)
+    if (ext.Equals(".zip") && !g_advancedSettings.m_bAllowZip)
       continue;
 
-    it->ToLower();
-    (*it) = "." + (*it);
+    if (std::find(m_validExtensions.begin(), m_validExtensions.end(), ext) == m_validExtensions.end())
+      m_validExtensions.push_back(ext);
+  }
+}
 
-    if (std::find(m_validExtensions.begin(), m_validExtensions.end(), *it) == m_validExtensions.end())
-      m_validExtensions.push_back(*it);
+void CGameClient::SetPlatforms(const CStdString &strPlatformList)
+{
+  // If no paltforms are provided, don't erase the ones we are already tracking
+  if (strPlatformList.empty())
+    return;
+
+  m_platforms.clear();
+  CStdStringArray platforms;
+  StringUtils::SplitString(strPlatformList, "|", platforms);
+  for (CStdStringArray::iterator it = platforms.begin(); it != platforms.end(); it++)
+  {
+    it->Trim();
+    if (!it->empty())
+      m_platforms.push_back(*it);
   }
 }
 

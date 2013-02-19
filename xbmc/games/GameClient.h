@@ -258,11 +258,12 @@ namespace ADDON
     void Initialize();
 
     /**
-     * Parse a pipe-separated extensions list, returned from the game client,
-     * into an array. The extensions list contains both upper and lower case
+     * Parse a pipe-separated list, returned from the game client, into an
+     * array. The extensions list can contain both upper and lower case
      * extensions; only lower-case extensions are stored in m_validExtensions.
      */
     void SetExtensions(const CStdString &strExtensionList);
+    void SetPlatforms(const CStdString &strPlatformList);
 
     static bool EnvironmentCallback(unsigned cmd, void *data);
     static DataReceiver::SetPixelFormat_t _SetPixelFormat; // called by EnvironmentCallback()
