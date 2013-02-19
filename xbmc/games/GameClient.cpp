@@ -249,11 +249,11 @@ CGameClient::CGameClient(const AddonProps &props) : CAddon(props)
 {
   Initialize();
 
-  try { SetPlatforms(props.extrainfo.at("platforms")); }
-  catch (...) { }
-
-  try { SetExtensions(props.extrainfo.at("extensions")); }
-  catch (...) { }
+  InfoMap::const_iterator it;
+  if ((it = props.extrainfo.find("platforms")) != props.extrainfo.end())
+    SetPlatforms(it->second);
+  if ((it = props.extrainfo.find("extensions")) != props.extrainfo.end())
+    SetExtensions(it->second);
 }
 
 CGameClient::CGameClient(const cp_extension_t *ext) : CAddon(ext)
