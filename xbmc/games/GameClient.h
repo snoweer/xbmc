@@ -164,7 +164,12 @@ namespace ADDON
      */
     static bool GetEffectiveRomPath(const CStdString &zipPath, const CStdStringArray &validExts, CStdString &effectivePath);
 
+    /**
+     * If the game client was a bad boy and provided no extensions, this will
+     * optimistically return true.
+     */
     static bool IsExtensionValid(const CStdString &ext, const CStdStringArray &vecExts);
+    bool IsExtensionValid(const CStdString &ext) const { return IsExtensionValid(ext, m_config.extensions); }
 
     CGameClient(const AddonProps &props);
     CGameClient(const cp_extension_t *props);
@@ -178,12 +183,6 @@ namespace ADDON
 
     // Cleanly shut down and unload the DLL.
     void DeInit();
-
-    /**
-     * If the game client was a bad boy and provided no extensions, this will
-     * optimistically return true.
-     */
-    bool IsExtensionValid(const CStdString &ext) const;
 
     bool OpenFile(const CFileItem &file, const DataReceiver &callbacks);
     void CloseFile();
