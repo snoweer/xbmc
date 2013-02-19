@@ -560,7 +560,7 @@ bool CAddonInstallJob::OnPreInstall()
     CAddonDatabase database;
     database.Open();
     bool running = !database.IsAddonDisabled(m_addon->ID()); //grab a current state
-    database.DisableAddon(m_addon->ID(),false); // enable it so we can remove it??
+    database.DisableAddon(m_addon->ID(), false, false); // enable it so we can remove it??
     // regrab from manager to have the correct path set
     AddonPtr addon;
     ADDON::CAddonMgr::Get().GetAddon(m_addon->ID(), addon);

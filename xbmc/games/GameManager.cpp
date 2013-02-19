@@ -71,7 +71,7 @@ void CGameManager::RegisterAddons(const VECADDONS &addons)
     RegisterAddon(boost::dynamic_pointer_cast<CGameClient>(*it));
 }
 
-void CGameManager::RegisterAddon(GameClientPtr clientAddon)
+void CGameManager::RegisterAddon(GameClientPtr clientAddon, bool launchQueued /* = true */)
 {
   // Sanity check
   if (!clientAddon)
@@ -104,7 +104,7 @@ void CGameManager::RegisterAddon(GameClientPtr clientAddon)
 
   // If a file was queued by RetroPlayer, test to see if we should launch the
   // newly installed game client
-  if (!m_queuedFile.GetPath().empty())
+  if (launchQueued && !m_queuedFile.GetPath().empty())
   {
     // Test if the new client can launch the file
     CStdStringArray candidates;

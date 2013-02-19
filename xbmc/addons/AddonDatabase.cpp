@@ -558,7 +558,7 @@ void CAddonDatabase::SetPropertiesFromAddon(const AddonPtr& addon,
     pItem->SetProperty("Addon.Language", it->second);
 }
 
-bool CAddonDatabase::DisableAddon(const CStdString &addonID, bool disable /* = true */)
+bool CAddonDatabase::DisableAddon(const CStdString &addonID, bool disable /* = true */, bool launchQueuedGame /* = true */)
 {
   try
   {
@@ -612,7 +612,7 @@ bool CAddonDatabase::DisableAddon(const CStdString &addonID, bool disable /* = t
 
       // If the addon is a game client, register it
       if (CAddonMgr::Get().GetAddon(addonID, addon, ADDON_GAMEDLL, false) && addon)
-        CGameManager::Get().RegisterAddon(boost::dynamic_pointer_cast<CGameClient>(addon));
+        CGameManager::Get().RegisterAddon(boost::dynamic_pointer_cast<CGameClient>(addon), launchQueuedGame);
     }
     return true;
   }

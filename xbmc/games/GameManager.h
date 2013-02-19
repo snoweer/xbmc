@@ -48,7 +48,7 @@ public:
    * compatible emulator is registered.
    */
   void RegisterAddons(const ADDON::VECADDONS &addons);
-  void RegisterAddon(ADDON::GameClientPtr clientAddon);
+  void RegisterAddon(ADDON::GameClientPtr clientAddon, bool launchQueued = true);
   void UnregisterAddonByID(const CStdString &ID);
 
   /**
