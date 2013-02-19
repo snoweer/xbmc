@@ -1134,7 +1134,8 @@ namespace JSONRPC
                 "\"xbmc.metadata.scraper.musicvideos\", \"xbmc.metadata.scraper.tvshows\", \"xbmc.ui.screensaver\","
                 "\"xbmc.player.musicviz\", \"xbmc.python.pluginsource\", \"xbmc.python.script\", \"xbmc.python.weather\","
                 "\"xbmc.python.subtitles\", \"xbmc.python.lyrics\", \"xbmc.gui.skin\", \"xbmc.gui.webinterface\","
-                "\"xbmc.addon.video\", \"xbmc.addon.audio\", \"xbmc.addon.image\", \"xbmc.addon.executable\", \"xbmc.service\" ],"
+                "\"xbmc.gameclient\", \"xbmc.addon.video\", \"xbmc.addon.audio\", \"xbmc.addon.image\", \"xbmc.addon.executable\","
+                "\"xbmc.service\" ],"
       "\"default\": \"unknown\""
     "}",
     "\"Addon.Content\": {"
@@ -2747,7 +2748,7 @@ namespace JSONRPC
       "\"params\": ["
         "{ \"name\": \"type\", \"$ref\": \"Addon.Types\" },"
         "{ \"name\": \"content\", \"$ref\": \"Addon.Content\", \"description\": \"Content provided by the addon. Only considered for plugins and scripts.\" },"
-        "{ \"name\": \"enabled\", \"type\": [ { \"type\": \"boolean\" }, { \"type\": \"string\", \"enum\": [ \"all\" ] } ], \"default\": \"all\" },"
+        "{ \"name\": \"enabled\", \"type\": [ { \"type\": \"boolean\" }, { \"type\": \"string\", \"enum\": [ \"all\", \"uninstalled\" ] } ], \"default\": \"all\" },"
         "{ \"name\": \"properties\", \"$ref\": \"Addon.Fields\" },"
         "{ \"name\": \"limits\", \"$ref\": \"List.Limits\" }"
       "],"
