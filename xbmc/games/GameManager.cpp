@@ -106,43 +106,12 @@ void CGameManager::RegisterAddon(GameClientPtr clientAddon)
   // newly installed game client
   if (!m_queuedFile.GetPath().empty())
   {
-    // Test if the new client can launch the file. Backup the file first
-    // because GetGameClientIDs() will reset it.
+    // Test if the new client can launch the file
     CStdStringArray candidates;
     GetGameClientIDs(m_queuedFile, candidates);
     if (std::find(candidates.begin(), candidates.end(), clientAddon->ID()) != candidates.end())
     {
-      // We can launch the file with clientAddon, if the user answers yes then do so
-      CGUIDialogYesNo *pDialog = dynamic_cast<CGUIDialogYesNo*>(g_windowManager.GetWindow(WINDOW_DIALOG_YES_NO));
-      if (pDialog)
-      {
-        CStdString title(m_queuedFile.GetGameInfoTag()->GetTitle());
-        if (title.empty())
-          title = URIUtils::GetFileName(m_queuedFile.GetPath());
-
-        pDialog->SetHeading(24025); // Manage emulators...
-        pDialog->SetLine(0, 24057); // A compatible emulator was installed for:
-        pDialog->SetLine(1, title); //
-        pDialog->SetLine(2, 20013); // Do you wish to launch the game?
-        pDialog->DoModal();
-
-        if (pDialog->IsConfirmed())
-        {
-          // This makes sure we don't prompted again on PlayMedia()
-          m_queuedFile.SetProperty("gameclient", clientAddon->ID());
-
-          // Close the add-on info dialog, if open
-          int iWindow = g_windowManager.GetTopMostModalDialogID(true);
-          CGUIWindow *window = g_windowManager.GetWindow(iWindow);
-          if (window)
-            window->Close();
-
-          // Play a copy, because PlayMedia() will reset the queued file
-          // (and then no longer be able to play it)
-          CFileItem fileCopy(m_queuedFile);
-          g_application.PlayMedia(fileCopy);
-        }
-      }
+      LaunchFile(m_queuedFile, clientAddon->ID());
       // Don't ask the user twice
       m_queuedFile = CFileItem();
     }
@@ -240,6 +209,37 @@ void CGameManager::QueueFile(const CFileItem &file)
 {
   CSingleLock lock(m_critSection);
   m_queuedFile = file;
+}
+
+void CGameManager::LaunchFile(CFileItem file, const CStdString &strGameClient) const
+{
+  // This makes sure we aren't prompted again by PlayMedia()
+  file.SetProperty("gameclient", strGameClient);
+
+  CGUIDialogYesNo *pDialog = dynamic_cast<CGUIDialogYesNo*>(g_windowManager.GetWindow(WINDOW_DIALOG_YES_NO));
+  if (pDialog)
+  {
+    CStdString title(file.GetGameInfoTag()->GetTitle());
+    if (title.empty())
+      title = URIUtils::GetFileName(m_queuedFile.GetPath());
+
+    pDialog->SetHeading(24025); // Manage emulators...
+    pDialog->SetLine(0, 24057); // A compatible emulator was installed for:
+    pDialog->SetLine(1, title); //
+    pDialog->SetLine(2, 20013); // Do you wish to launch the game?
+    pDialog->DoModal();
+
+    if (pDialog->IsConfirmed())
+    {
+      // Close the add-on info dialog, if open
+      int iWindow = g_windowManager.GetTopMostModalDialogID(true);
+      CGUIWindow *window = g_windowManager.GetWindow(iWindow);
+      if (window)
+        window->Close();
+
+      g_application.PlayMedia(file);
+    }
+  }
 }
 
 void CGameManager::GetGameClientIDs(const CFileItem& file, CStdStringArray &candidates) const

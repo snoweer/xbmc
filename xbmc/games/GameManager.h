@@ -85,6 +85,12 @@ public:
   void GetGameClientIDs(const CFileItem& file, CStdStringArray &candidates) const;
 
 private:
+  /**
+   * If we can launch the file with gameClient, ask the user if they would
+   * like to do so.
+   */
+  void LaunchFile(CFileItem file, const CStdString &strGameClient) const;
+
   std::vector<ADDON::GameClientConfig> m_gameClients;
   CCriticalSection m_critSection;
   CStdStringArray m_remoteExtensions;

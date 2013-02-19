@@ -10409,7 +10409,9 @@ msgctxt "#24025"
 msgid "Manage emulators..."
 msgstr ""
 
-#empty string with id 24026
+msgctxt "#24026"
+msgid "Install emulator"
+msgstr ""
 
 msgctxt "#24027"
 msgid "Weather"
@@ -10500,7 +10502,9 @@ msgctxt "#24048"
 msgid "Rollback"
 msgstr ""
 
-#empty string with id 24049
+msgctxt "#24049"
+msgid "Add-on manager"
+msgstr ""
 
 msgctxt "#24050"
 msgid "Available Add-ons"
@@ -10522,13 +10526,7 @@ msgctxt "#24054"
 msgid "Changelog"
 msgstr ""
 
-msgctxt "#24055"
-msgid "No game clients found."
-msgstr ""
-
-msgctxt "#24056"
-msgid "Go to the add-on manager?"
-msgstr ""
+#empty strings from id 24055 to 24056
 
 msgctxt "#24057"
 msgid "A compatible emulator was installed for:"

@@ -40,8 +40,8 @@ public:
   virtual bool OpenFile(const CFileItem& file, const CPlayerOptions& options);
   virtual bool CloseFile();
 
-  void GoToAddonManager(const CFileItem &file, bool prompt);
-  bool ChooseAddon(const CStdStringArray &clients, const CFileItem &file);
+  ADDON::GameClientPtr InstallGameClient(const CFileItem &file) const;
+  ADDON::GameClientPtr ChooseAddon(const CFileItem &file, const CStdStringArray &clients) const;
 
   virtual bool OnAction(const CAction &action)
   {
