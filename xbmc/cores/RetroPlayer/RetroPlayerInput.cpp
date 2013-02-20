@@ -198,7 +198,11 @@ void CRetroPlayerInput::ProcessGamepad(const Gamepad &gamepad)
     // Actual button ID is b + 1
     if (!CButtonTranslator::GetInstance().TranslateJoystickString(WINDOW_FULLSCREEN_GAME,
         gamepad.name.c_str(), b + 1, JACTIVE_BUTTON, actionID, actionName, fullrange))
+    {
+      CLog::Log(LOGDEBUG, "RetroPlayerInput: Controller=%i, Gamepad %s untranslated button %s, action=%s, ID=%d",
+        gamepad.id, gamepad.name.c_str(), gamepad.buttons[b] ? "press" : "unpress", actionName.c_str(), actionID);
       continue;
+    }
 
     int id = TranslateActionID(actionID);
     if (0 <= id && id < (int)(sizeof(m_joypadState[0]) / sizeof(m_joypadState[0][0])))
@@ -214,6 +218,8 @@ void CRetroPlayerInput::ProcessGamepad(const Gamepad &gamepad)
         gamepad.buttons[b] ? "press" : "unpress", actionName.c_str(), actionID);
     }
   }
+
+  static const char *dir[] = {"UP", "RIGHT", "DOWN", "LEFT"};
 
   for (unsigned int h = 0; h < gamepad.hatCount; h++)
   {
@@ -243,22 +249,24 @@ void CRetroPlayerInput::ProcessGamepad(const Gamepad &gamepad)
       bool       fullrange; // unused
       if (!CButtonTranslator::GetInstance().TranslateJoystickString(WINDOW_FULLSCREEN_GAME,
           gamepad.name.c_str(), buttonID, JACTIVE_HAT, actionID, actionName, fullrange))
+      {
+        CLog::Log(LOGDEBUG, "RetroPlayerInput: Controller=%i, Invalid hat %d %s %s", gamepad.id,
+          h + 1, dir[i], gamepad.hats[h][i] ? "press" : "unpress");
         continue;
-
-      static const char *dir[] = {"UP", "RIGHT", "DOWN", "LEFT"};
+      }
 
       int id = TranslateActionID(actionID);
       if (0 <= id && id < (int)(sizeof(m_joypadState[0]) / sizeof(m_joypadState[0][0])))
       {
         // Record the new joypad state
         m_joypadState[gamepad.id][id] = gamepad.hats[h][i];
-        CLog::Log(LOGDEBUG, "RetroPlayerInput: Controller=%i, Hat %s %s, action=%s, ID=%d", gamepad.id, dir[i],
-          gamepad.hats[h][i] ? "press" : "unpress", actionName.c_str(), actionID);
+        CLog::Log(LOGDEBUG, "RetroPlayerInput: Controller=%i, Hat %d %s %s, action=%s, ID=%d", gamepad.id,
+          h + 1, dir[i], gamepad.hats[h][i] ? "press" : "unpress", actionName.c_str(), actionID);
       }
       else
       {
-        CLog::Log(LOGDEBUG, "RetroPlayerInput: Controller=%i, Invalid hat %s %s, action=%s, ID=%d", gamepad.id, dir[i],
-          gamepad.hats[h][i] ? "press" : "unpress", actionName.c_str(), actionID);
+        CLog::Log(LOGDEBUG, "RetroPlayerInput: Controller=%i, Invalid hat %d %s %s, action=%s, ID=%d", gamepad.id,
+          h + 1, dir[i], gamepad.hats[h][i] ? "press" : "unpress", actionName.c_str(), actionID);
       }
     }
   }
