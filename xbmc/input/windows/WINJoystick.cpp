@@ -319,12 +319,7 @@ void CJoystick::Update(CRetroPlayerInput *joystickHandler)
       long amounts[] = {js.lX, js.lY, js.lZ, js.lRx, js.lRy, js.lRz};
       gamepad.axisCount = std::min(ARRAY_LENGTH(gamepad.axes), ARRAY_LENGTH(amounts));
       for (unsigned int a = 0; a < gamepad.axisCount; a++)
-      {
-        if (amounts[a] > m_DeadzoneRange)
-          gamepad.axes[a] = (float)(amounts[a] - m_DeadzoneRange) / (float)(MAX_AXISAMOUNT - m_DeadzoneRange);
-        else if (amounts[a] < -m_DeadzoneRange)
-          gamepad.axes[a] = (float)(amounts[a] + m_DeadzoneRange) / (float)(MAX_AXISAMOUNT - m_DeadzoneRange);
-      }
+        gamepad.axes[a] = NormalizeAxis(amounts[a]);
 
       joystickHandler->ProcessGamepad(gamepad);
     }
@@ -528,13 +523,18 @@ int CJoystick::GetAxisWithMaxAmount()
   return axis;
 }
 
+float CJoystick::NormalizeAxis(long value) const
+{
+  if (value > m_DeadzoneRange)
+    return (float)(value - m_DeadzoneRange) / (float)(MAX_AXISAMOUNT - m_DeadzoneRange);
+  else if (value < -m_DeadzoneRange)
+    return (float)(value + m_DeadzoneRange) / (float)(MAX_AXISAMOUNT - m_DeadzoneRange);
+  return 0;
+}
+
 float CJoystick::GetAmount(int axis)
 {
-  if (m_Amount[axis] > m_DeadzoneRange)
-    return (float)(m_Amount[axis]-m_DeadzoneRange)/(float)(MAX_AXISAMOUNT-m_DeadzoneRange);
-  if (m_Amount[axis] < -m_DeadzoneRange)
-    return (float)(m_Amount[axis]+m_DeadzoneRange)/(float)(MAX_AXISAMOUNT-m_DeadzoneRange);
-  return 0;
+  return NormalizeAxis(m_Amount[axis]);
 }
 
 void CJoystick::SetEnabled(bool enabled /*=true*/)

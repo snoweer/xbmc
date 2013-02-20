@@ -53,6 +53,7 @@ public:
   bool GetHat (int &id, int &position, bool consider_repeat=true);
   std::string GetJoystick() { return (m_JoyId>-1)?m_JoystickNames[m_JoyId]:""; }
   int GetAxisWithMaxAmount();
+  float NormalizeAxis(long value) const;
   float GetAmount(int axis);
   float GetAmount() { return GetAmount(m_AxisId); }
   bool IsEnabled() const { return m_joystickEnabled; }
