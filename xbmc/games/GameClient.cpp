@@ -70,7 +70,7 @@ bool CGameClient::IRetroStrategy::GetGameInfo(retro_game_info &info) const
     // Check for file size overflow (libretro accepts files <= size_t max)
     if (length <= 0 || length >= std::numeric_limits<size_t>::max())
     {
-      CLog::Log(LOGERROR, "GameClient: Invalid file size: %"PRIu64" bytes", (uint64_t)length);
+      CLog::Log(LOGERROR, "GameClient: Invalid file size: %"PRId64" bytes", length);
       return false;
     }
 
