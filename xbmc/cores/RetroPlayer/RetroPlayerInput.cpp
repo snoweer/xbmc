@@ -35,6 +35,9 @@
 #endif
 
 
+// TODO: do something less... ghetto
+static CRetroPlayerInput::Gamepad g_gamepad[GAMEPAD_MAX_CONTROLLERS];
+
 unsigned char &CRetroPlayerInput::Hat::operator[](unsigned int i)
 {
   switch (i)
@@ -88,7 +91,8 @@ void CRetroPlayerInput::Begin()
   for(int i =0; i < GAMEPAD_MAX_CONTROLLERS; i++)
   {
     m_gamepad[i] = Gamepad();
-  }  
+  }
+  memset(g_gamepad, 0, sizeof(g_gamepad));
   m_bActive = true;
 }
 
@@ -164,6 +168,34 @@ void CRetroPlayerInput::ProcessKeyUp(const CKey &key, unsigned controller_id)
   {
     CLog::Log(LOGDEBUG, "RetroPlayerInput: Controller=%i, Invalid KeyUp, action=%s, ID=%d", controller_id, action.GetName().c_str(), action.GetID());
   }
+}
+
+void CRetroPlayerInput::ProcessButtonDown(const CStdString &name, int id, unsigned char button)
+{
+  g_gamepad[id].name = name;
+  g_gamepad[id].buttons[button] = 1;
+  ProcessGamepad(g_gamepad[id]);
+}
+
+void CRetroPlayerInput::ProcessButtonUp(const CStdString &name, int id, unsigned char button)
+{
+  g_gamepad[id].name = name;
+  g_gamepad[id].buttons[button] = 0;
+  ProcessGamepad(g_gamepad[id]);
+}
+
+void CRetroPlayerInput::ProcessHatState(const CStdString &name, int id, unsigned int hat, const Hat &hatState)
+{
+  g_gamepad[id].name = name;
+  g_gamepad[id].hats[hat] = hatState;
+  ProcessGamepad(g_gamepad[id]);
+}
+
+void CRetroPlayerInput::ProcessAxisState(const CStdString &name, int id, unsigned int axis, float value)
+{
+  g_gamepad[id].name = name;
+  g_gamepad[id].axes[axis] = value;
+  ProcessGamepad(g_gamepad[id]);
 }
 
 void CRetroPlayerInput::ProcessGamepad(const Gamepad &gamepad)

@@ -101,6 +101,14 @@ public:
    */
   void ProcessKeyUp(const CKey &key, unsigned controller_id);
 
+  void ProcessButtonDown(const CStdString &name, int id, unsigned char button);
+
+  void ProcessButtonUp(const CStdString &name, int id, unsigned char button);
+
+  void ProcessHatState(const CStdString &name, int id, unsigned int hat, const Hat &hatState);
+
+  void ProcessAxisState(const CStdString &name, int id, unsigned int axis, float value);
+
   /**
    * Monitor gamepads for input changes. This is called by g_Joystick.Update()
    * on every frame, once per gamepad device. Currently, gamepad axes are
