@@ -53,9 +53,9 @@ public:
 
   /**
    * Register the supported extensions of remote add-ons for the purpose of
-   * IsGame() calls.
+   * IsGame() calls. fromDatabase is only used for logging purposes.
    */
-  void RegisterRemoteAddons(const ADDON::VECADDONS &addons);
+  void RegisterRemoteAddons(const ADDON::VECADDONS &addons, bool fromDatabase = false);
 
   /**
    * Returns true if the file extension is supported by an add-on in an enabled
@@ -68,7 +68,7 @@ public:
    bool IsGame(const CStdString& path);
 
   /**
-   * Queue a file to be launched when the corrent game client is installed.
+   * Queue a file to be launched when the current game client is installed.
    */
   void QueueFile(const CFileItem &file);
 
@@ -79,7 +79,7 @@ public:
    * tag provides a "platform", the available game clients will be filtered by
    * this platform (given the <platform> tag in their addon.xml). If file is a
    * zip file, the contents of that zip will be used to find suitable
-   * candidates (which may yeild multiple if there are several different kinds
+   * candidates (which may yield multiple if there are several different kinds
    * of ROMs inside).
    */
   void GetGameClientIDs(const CFileItem& file, CStdStringArray &candidates) const;

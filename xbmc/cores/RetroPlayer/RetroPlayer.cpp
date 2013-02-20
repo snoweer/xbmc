@@ -83,7 +83,7 @@ bool CRetroPlayer::OpenFile(const CFileItem& file, const CPlayerOptions& options
       tag = temp.GetGameInfoTag();
   }
 
-  // Dump discovered infomation to the debug log
+  // Dump discovered information to the debug log
   if (tag)
   {
     CLog::Log(LOGDEBUG, "RetroPlayer: ---------------------------------------");
@@ -159,7 +159,7 @@ bool CRetroPlayer::OpenFile(const CFileItem& file, const CPlayerOptions& options
 
   g_renderManager.PreInit();
   Create();
-  CLog::Log(LOGDEBUG, "RetroPlayer: File opened sucessfully");
+  CLog::Log(LOGDEBUG, "RetroPlayer: File opened successfully");
   return true;
 }
 
@@ -232,7 +232,7 @@ GameClientPtr CRetroPlayer::InstallGameClient(CFileItem file) const
       int btnid2 = CGUIDialogContextMenu::ShowAndGetChoice(emuChoices);
       if (btnid2 < 0 || btnid2 >= (int)candidates.size())
       {
-        CLog::Log(LOGDEBUG, "RetroPlayer: User cancelled game client installation selection");
+        CLog::Log(LOGDEBUG, "RetroPlayer: User canceled game client installation selection");
       }
       else
       {
@@ -246,7 +246,7 @@ GameClientPtr CRetroPlayer::InstallGameClient(CFileItem file) const
         }
         else
         {
-          CLog::Log(LOGDEBUG, "RetroPlayer: Game client installation cancelled/failed");
+          CLog::Log(LOGDEBUG, "RetroPlayer: Game client installation canceled/failed");
         }
       }
     }
@@ -264,7 +264,7 @@ GameClientPtr CRetroPlayer::InstallGameClient(CFileItem file) const
   }
   else
   {
-    CLog::Log(LOGDEBUG, "RetroPlayer: User cancelled game client selection");
+    CLog::Log(LOGDEBUG, "RetroPlayer: User canceled game client selection");
   }
   return GameClientPtr();
 }

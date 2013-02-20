@@ -29,7 +29,7 @@
 
 CRetroPlayerVideo::CRetroPlayerVideo()
   : CThread("RetroPlayerVideo"),
-    m_queuedFrame(), // value-initialize
+    m_queuedFrame(),
     m_pixelFormat(RETRO_PIXEL_FORMAT_0RGB1555),
     m_swsContext(NULL),
     m_bAllowFullscreen(false),

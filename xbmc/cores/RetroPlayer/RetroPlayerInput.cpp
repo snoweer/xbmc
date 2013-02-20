@@ -184,7 +184,7 @@ void CRetroPlayerInput::ProcessGamepad(const Gamepad &gamepad)
     // We only process button presses in WINDOW_FULLSCREEN_VIDEO. We check for
     // this instead of WINDOW_FULLSCREEN_GAME because FULLSCREEN_GAME is a thin
     // alias for FULLSCREEN_VIDEO, used only for translating keyboard and gamepad
-    // events (this way, our translaters don't have to query the active player 
+    // events (this way, our translators don't have to query the active player
     // core). Later on, when translating, *then* we'll use WINDOW_FULLSCREEN_GAME.
     if (gamepad.buttons[b] && (window & WINDOW_ID_MASK) != WINDOW_FULLSCREEN_VIDEO)
       continue;

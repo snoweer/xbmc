@@ -68,7 +68,7 @@ namespace ADDON
      * support different extensions, some support loading from the VFS, and
      * some have the ability to load ROMs from within zips. Game clients have
      * a tendency to lie about their capabilities. Furthermore, different ROMs
-     * can have different results, so it is desireable to try different
+     * can have different results, so it is desirable to try different
      * strategies upon failure.
      */
     class IRetroStrategy

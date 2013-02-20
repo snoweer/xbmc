@@ -54,7 +54,7 @@ bool CGameClient::IRetroStrategy::GetGameInfo(retro_game_info &info) const
   }
   else
   {
-    void    *data;
+    unsigned char *data;
     int64_t length;
 
     // Load the file from the vfs
@@ -68,9 +68,9 @@ bool CGameClient::IRetroStrategy::GetGameInfo(retro_game_info &info) const
     length = vfsFile.GetLength();
 
     // Check for file size overflow (libretro accepts files <= size_t max)
-    if (length == 0 || length >= std::numeric_limits<size_t>::max())
+    if (length <= 0 || length >= std::numeric_limits<size_t>::max())
     {
-      CLog::Log(LOGERROR, "GameClient: Invalid file size: %d bytes", length);
+      CLog::Log(LOGERROR, "GameClient: Invalid file size: %"PRIu64" bytes", (uint64_t)length);
       return false;
     }
 
@@ -86,7 +86,7 @@ bool CGameClient::IRetroStrategy::GetGameInfo(retro_game_info &info) const
 
     info.data = data;
     info.size = (size_t)length;
-    CLog::Log(LOGINFO, "GameClient: Strategy is valid, client is loading file from VFS (filesize: %d KB)", info.size);
+    CLog::Log(LOGINFO, "GameClient: Strategy is valid, client is loading file from VFS (filesize: %lu KB)", info.size);
   }
   return true;
 }
@@ -712,7 +712,7 @@ void CGameClient::SetExtensions(const CStdString &strExtensionList)
 
 void CGameClient::SetPlatforms(const CStdString &strPlatformList)
 {
-  // If no paltforms are provided, don't erase the ones we are already tracking
+  // If no platforms are provided, don't erase the ones we are already tracking
   if (strPlatformList.empty())
     return;
 
@@ -935,14 +935,13 @@ bool CGameClient::EnvironmentCallback(unsigned int cmd, void *data)
       const retro_keyboard_callback *callback_struct = reinterpret_cast<const retro_keyboard_callback*>(data);
       if (callback_struct->callback)
       {
-        CLog::Log(LOGINFO, "GameClient environment query ID=%d: set keyboard callback");
+        CLog::Log(LOGINFO, "GameClient environment query ID=%d: set keyboard callback", RETRO_ENVIRONMENT_SET_KEYBOARD_CALLBACK);
         _SetKeyboardCallback(callback_struct->callback);
       }
       break;
     }
   default:
-    CLog::Log(LOGERROR, "GameClient environment query ID=%d: invalid query: %d",
-        RETRO_ENVIRONMENT_SET_PIXEL_FORMAT, cmd);
+    CLog::Log(LOGERROR, "GameClient environment query: invalid query: %u", cmd);
     return false;
   }
   return true;

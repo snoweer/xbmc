@@ -45,7 +45,7 @@ public:
   {
     Hat() { up = right = down = left = 0; }
     bool operator==(const Hat &lhs) const { return up == lhs.up && right == lhs.right && down == lhs.down && left == lhs.left; }
-    // Iterate through cardinal directions in an ordinal fasion
+    // Iterate through cardinal directions in an ordinal fashion
     unsigned char &operator[](unsigned int i);
     const unsigned char &operator[](unsigned int i) const;
     // Translate this hat into a cardinal direction ("N", "NE", "E", ...) or "CENTERED"

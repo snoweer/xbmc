@@ -128,7 +128,7 @@ void CGameManager::UnregisterAddonByID(const CStdString &ID)
   CLog::Log(LOGERROR, "CGameManager: can't unregister %s - not registered!", ID.c_str());
 }
 
-void CGameManager::RegisterRemoteAddons(const VECADDONS &addons)
+void CGameManager::RegisterRemoteAddons(const VECADDONS &addons, bool fromDatabase /* = false */)
 {
   CSingleLock lock(m_critSection);
 
@@ -154,8 +154,8 @@ void CGameManager::RegisterRemoteAddons(const VECADDONS &addons)
     else
     {
       // No extensions listed in addon.xml. If installed, get the extensions from the DLL.
-      CLog::Log(LOGDEBUG, "CGameManager - No extensions for %s v%s in addon.xml",
-          gc->ID().c_str(), gc->Version().c_str());
+      CLog::Log(LOGDEBUG, "CGameManager - No extensions for %s v%s in %s",
+          gc->ID().c_str(), gc->Version().c_str(), fromDatabase ? "database" : "addon.xml");
 
       for (std::vector<GameClientConfig>::iterator itLocal = m_gameClients.begin(); itLocal != m_gameClients.end(); itLocal++)
       {
@@ -186,7 +186,7 @@ bool CGameManager::IsGame(const CStdString& path)
     CAddonDatabase database;
     database.Open();
     database.GetAddons(addons);
-    RegisterRemoteAddons(addons);
+    RegisterRemoteAddons(addons, true);
   }
 
   // Get the file extension
