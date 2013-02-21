@@ -216,6 +216,8 @@ GameClientPtr CRetroPlayer::InstallGameClient(CFileItem file) const
       if (!(*itRemote)->IsType(ADDON_GAMEDLL))
         continue;
       GameClientPtr gc = boost::dynamic_pointer_cast<CGameClient>(*itRemote);
+      // Require extensions to be provided by the game client to filter ones
+      // that are probably unneccessary
       if (gc && !gc->GetConfig().extensions.empty() && gc->CanOpen(file))
       {
         emuChoices.Add(candidates.size(), gc->Name());
