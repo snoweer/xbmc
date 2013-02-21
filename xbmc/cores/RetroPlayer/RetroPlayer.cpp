@@ -39,6 +39,7 @@
 
 #define PLAYSPEED_PAUSED    0
 #define PLAYSPEED_NORMAL    1000
+#define REWIND_SCALE        4 // 2x rewind is 1/2 speed of play
 
 using namespace ADDON;
 
@@ -185,11 +186,8 @@ GameClientPtr CRetroPlayer::InstallGameClient(CFileItem file) const
       {
         CLog::Log(LOGDEBUG, "RetroPlayer: Installing game client %s", id.c_str());
         addon.reset();
-        if (CAddonInstaller::Get().PromptForInstall(id, addon) && addon &&
-            addon->Type() == ADDON_GAMEDLL)
-        {
+        if (CAddonInstaller::Get().PromptForInstall(id, addon) && addon && addon->Type() == ADDON_GAMEDLL)
           return boost::dynamic_pointer_cast<CGameClient>(addon);
-        }
       }
     }
     file.ClearProperty("gameclient"); // don't want this to interfere later on
@@ -226,30 +224,21 @@ GameClientPtr CRetroPlayer::InstallGameClient(CFileItem file) const
     }
 
     if (candidates.empty())
-    {
       CLog::Log(LOGDEBUG, "RetroPlayer: No compatible game clients for installation");
-    }
     else
     {
       int btnid2 = CGUIDialogContextMenu::ShowAndGetChoice(emuChoices);
       if (btnid2 < 0 || btnid2 >= (int)candidates.size())
-      {
         CLog::Log(LOGDEBUG, "RetroPlayer: User canceled game client installation selection");
-      }
       else
       {
         CStdString id = candidates[btnid2];
         AddonPtr addon;
         CLog::Log(LOGDEBUG, "RetroPlayer: Installing game client %s", candidates[btnid2].c_str());
-        if (CAddonInstaller::Get().PromptForInstall(candidates[btnid2], addon) && addon &&
-            addon->Type() == ADDON_GAMEDLL)
-        {
+        if (CAddonInstaller::Get().PromptForInstall(candidates[btnid2], addon) && addon && addon->Type() == ADDON_GAMEDLL)
           return boost::dynamic_pointer_cast<CGameClient>(addon);
-        }
         else
-        {
           CLog::Log(LOGDEBUG, "RetroPlayer: Game client installation canceled/failed");
-        }
       }
     }
   }
@@ -258,16 +247,14 @@ GameClientPtr CRetroPlayer::InstallGameClient(CFileItem file) const
     // Queue the file so that if a compatible game client is installed, the
     // user will be asked to launch the file.
     CGameManager::Get().QueueFile(file);
-
     CLog::Log(LOGDEBUG, "RetroPlayer: User chose to go to the add-on manager");
     CStdStringArray params;
     params.push_back("addons://all/xbmc.gameclient");
     g_windowManager.ActivateWindow(WINDOW_ADDON_BROWSER, params);
   }
   else
-  {
     CLog::Log(LOGDEBUG, "RetroPlayer: User canceled game client selection");
-  }
+
   return GameClientPtr();
 }
 
@@ -310,9 +297,8 @@ GameClientPtr CRetroPlayer::ChooseAddon(const CFileItem &file, const CStdStringA
     g_windowManager.ActivateWindow(WINDOW_ADDON_BROWSER, params);
   }
   else
-  {
     CLog::Log(LOGDEBUG, "RetroPlayer: User cancelled game client selection");
-  }
+
   return GameClientPtr();
 }
 
@@ -382,13 +368,19 @@ void CRetroPlayer::Process()
   CLog::Log(LOGDEBUG, "RetroPlayer: Beginning loop de loop");
   while (!m_bStop)
   {
-    if (m_playSpeed <= PLAYSPEED_PAUSED)
+    if (m_playSpeed == PLAYSPEED_PAUSED)
     {
       // No need to pause audio or video, the absence of frames will pause it
-      m_pauseEvent.Wait();
+      // 1s should be a good failsafe if the event isn't triggered (shouldn't happen)
+      m_pauseEvent.WaitMSec(1000);
       // Reset the clock
       nextpts = CDVDClock::GetAbsoluteClock() + frametime;
       continue;
+    }
+    else if (m_playSpeed < PLAYSPEED_PAUSED)
+    {
+      // Need to rewind 2 frames, so that RunFrame() will update the screen
+      m_gameClient->RewindFrames(2);
     }
 
     // Run the game client for the next frame
@@ -398,12 +390,15 @@ void CRetroPlayer::Process()
     if (nextpts < CDVDClock::GetAbsoluteClock())
       nextpts = CDVDClock::GetAbsoluteClock();
 
+    double realFrameTime = frametime * PLAYSPEED_NORMAL /
+      (m_playSpeed > PLAYSPEED_PAUSED ? m_playSpeed : -m_playSpeed / REWIND_SCALE);
+
     // Slow down to 0.5x (an extra frame) if the audio is delayed
     if (m_audio.GetDelay() * 1000 > g_advancedSettings.m_iGameAudioBuffer)
-      nextpts += frametime * PLAYSPEED_NORMAL / m_playSpeed;
+      nextpts += realFrameTime;
 
     CDVDClock::WaitAbsoluteClock(nextpts);
-    nextpts += frametime * PLAYSPEED_NORMAL / m_playSpeed;
+    nextpts += realFrameTime;
   }
 
   m_video.StopThread(true);
@@ -482,7 +477,7 @@ void CRetroPlayer::Seek(bool bPlus, bool bLargeStep)
     return;
 
   int seek_seconds = bLargeStep ? 10 : 1;
-  m_gameClient->RewindFrames(seek_seconds * m_gameClient->GetFrameRate());
+  m_gameClient->RewindFrames((unsigned int)(seek_seconds * m_gameClient->GetFrameRate()));
 }
 
 void CRetroPlayer::SeekPercentage(float fPercent)
@@ -490,12 +485,12 @@ void CRetroPlayer::SeekPercentage(float fPercent)
   if (!m_gameClient)
     return;
 
-  int max_buffer = m_gameClient->RewindFramesAvailMax();
+  int max_buffer = m_gameClient->GetMaxFrames();
   if (!max_buffer) // Rewind not supported for game.
      return;
 
-  int current_buffer = m_gameClient->RewindFramesAvail();
-  int target_buffer = max_buffer * fPercent / 100.0f;
+  int current_buffer = m_gameClient->GetAvailableFrames();
+  int target_buffer = (int)(max_buffer * fPercent / 100.0f);
   int rewind_frames = current_buffer - target_buffer;
   if (rewind_frames > 0)
     m_gameClient->RewindFrames(rewind_frames);
@@ -506,11 +501,11 @@ float CRetroPlayer::GetPercentage()
   if (!m_gameClient)
     return 0.0f;
 
-  int max_buffer = m_gameClient->RewindFramesAvailMax();
+  int max_buffer = m_gameClient->GetMaxFrames();
   if (!max_buffer)
      return 0.0f;
 
-  int current_buffer = m_gameClient->RewindFramesAvail();
+  int current_buffer = m_gameClient->GetAvailableFrames();
   return (current_buffer * 100.0f) / max_buffer;
 }
 
@@ -519,14 +514,7 @@ void CRetroPlayer::SeekTime(int64_t iTime)
   if (!m_gameClient)
     return;
 
-  int current_buffer = m_gameClient->RewindFramesAvail();
-  if (!current_buffer) // Rewind not supported for game.
-     return;
-
-  int target_frame = 1000 * m_gameClient->GetFrameRate() / iTime;
-  int rewind_frames = current_buffer - target_frame;
-  if (rewind_frames > 0)
-    m_gameClient->RewindFrames(rewind_frames);
+  SeekPercentage(100.0f * iTime / GetTotalTime());
 }
 
 int64_t CRetroPlayer::GetTime()
@@ -534,7 +522,7 @@ int64_t CRetroPlayer::GetTime()
   if (!m_gameClient)
     return 0;
 
-  int current_buffer = m_gameClient->RewindFramesAvail();
+  int current_buffer = m_gameClient->GetAvailableFrames();
   return 1000 * current_buffer / m_gameClient->GetFrameRate(); // Millisecs
 }
 
@@ -543,7 +531,7 @@ int64_t CRetroPlayer::GetTotalTime()
   if (!m_gameClient)
     return 0;
 
-  int max_buffer = m_gameClient->RewindFramesAvailMax();
+  int max_buffer = m_gameClient->GetMaxFrames();
   return 1000 * max_buffer / m_gameClient->GetFrameRate(); // Millisecs
 }
 
