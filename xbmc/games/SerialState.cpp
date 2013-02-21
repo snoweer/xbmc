@@ -37,7 +37,6 @@ void CSerialState::Reset()
   m_state.clear();
   m_nextState.clear();
   m_rewindBuffer.clear();
-  m_frameSize = 0;
 }
 
 void CSerialState::AdvanceFrame()

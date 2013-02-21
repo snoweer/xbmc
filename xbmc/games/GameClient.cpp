@@ -313,6 +313,7 @@ void CGameClient::Initialize()
   m_frameRate = 0.0;
   m_sampleRate = 0.0;
   m_region = -1; // invalid
+  m_rewindSupported = false;
 }
 
 bool CGameClient::Init()
@@ -656,13 +657,15 @@ void CGameClient::RunFrame()
 
 unsigned int CGameClient::RewindFrames(unsigned int frames)
 {
-  CSingleLock lock(m_critSection);
-  unsigned int rewound = m_serialState.RewindFrames(frames);
+  if (m_rewindSupported)
+  {
+    CSingleLock lock(m_critSection);
 
-  if (rewound)
-    m_dll.retro_unserialize(m_serialState.GetState(), m_serialState.GetFrameSize());
-
-  return rewound;
+    unsigned int rewound = m_serialState.RewindFrames(frames);
+    if (rewound)
+      m_dll.retro_unserialize(m_serialState.GetState(), m_serialState.GetFrameSize());
+    return rewound;
+  }
 }
 
 void CGameClient::Reset()
@@ -672,6 +675,16 @@ void CGameClient::Reset()
     // TODO: Reset all controller ports to their same value. bSNES since v073r01
     // resets controllers to JOYPAD after a reset, so guard against this.
     m_dll.retro_reset();
+
+    if (m_rewindSupported)
+    {
+      m_serialState.Init(m_serialState.GetFrameSize(), m_serialState.GetMaxFrames());
+      if (!m_dll.retro_serialize(m_serialState.GetState(), m_serialState.GetFrameSize()))
+      {
+        m_rewindSupported = false;
+        CLog::Log(LOGINFO, "GameClient::Reset - Unable to serialize state, proceeding without rewind");
+      }
+    }
   }
 }
 
