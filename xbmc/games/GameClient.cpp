@@ -607,6 +607,8 @@ bool CGameClient::OpenFile(const CFileItem& file, const DataReceiver &callbacks)
 
 void CGameClient::CloseFile()
 {
+  CSingleLock lock(m_critSection);
+
   if (m_dll.IsLoaded())
   {
     m_dll.retro_unload_game();
@@ -636,28 +638,30 @@ void CGameClient::SetDevice(unsigned int port, unsigned int device)
 
 void CGameClient::RunFrame()
 {
-  // RunFrame() and RewindFrames() can be run
-  // in different threads, must lock.
-  CSingleLock lock(m_critSection);
   if (m_bIsPlaying)
+  {
+    // RunFrame() and RewindFrames() can be run in different threads, must lock
+    CSingleLock lock(m_critSection);
+
     m_dll.retro_run();
 
-  // Append a new state delta to the rewind buffer
-  if (m_rewindSupported)
-  {
-    if (m_dll.retro_serialize(m_serialState.GetNextState(), m_serialState.GetFrameSize()))
-      m_serialState.AdvanceFrame();
-    else
+    // Append a new state delta to the rewind buffer
+    if (m_rewindSupported)
     {
-      CLog::Log(LOGERROR, "GameClient core claimed it could serialize, but failed.");
-      m_rewindSupported = false;
+      if (m_dll.retro_serialize(m_serialState.GetNextState(), m_serialState.GetFrameSize()))
+        m_serialState.AdvanceFrame();
+      else
+      {
+        CLog::Log(LOGERROR, "GameClient core claimed it could serialize, but failed.");
+        m_rewindSupported = false;
+      }
     }
   }
 }
 
 unsigned int CGameClient::RewindFrames(unsigned int frames)
 {
-  if (m_rewindSupported)
+  if (m_bIsPlaying && m_rewindSupported)
   {
     CSingleLock lock(m_critSection);
 
