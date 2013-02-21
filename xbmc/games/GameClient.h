@@ -25,11 +25,9 @@
 #include "FileItem.h"
 #include "GameClientDLL.h"
 #include "games/tags/GameInfoTagLoader.h"
+#include "SerialState.h"
 
-#include <deque>
-#include <vector>
-#include <utility>
-#include <stdint.h>
+#include <set>
 
 #define GAMECLIENT_MAX_PLAYERS  8
 
@@ -241,21 +239,15 @@ namespace ADDON
      * save state deltas, it might not be possible to rewind as many
      * frames as desired. The function returns number of frames actually rewound.
      */
-    int RewindFrames(int frames);
+    unsigned int RewindFrames(unsigned int frames);
 
-    /**
-     * Returns how many frames it is possible to rewind
-     * with a call to RewindFrames(). */
-    int RewindFramesAvail() const { return m_rewindBuffer.size(); }
+    // Returns how many frames it is possible to rewind with a call to RewindFrames().
+    size_t GetAvailableFrames() const { return m_serialState.GetFramesAvailable(); }
 
-    /**
-     * Returns the maximum amount of frames that can ever
-     * be rewound. */
-    int RewindFramesAvailMax() const { return m_rewindMaxFrames; }
+    // Returns the maximum amount of frames that can ever be rewound.
+    int GetMaxFrames() const { return m_serialState.GetMaxFrames(); }
 
-    /**
-     * Reset the game, if running.
-     */
+    // Reset the game, if running.
     void Reset();
 
     double GetFrameRate() const { return m_frameRate; }
@@ -297,26 +289,8 @@ namespace ADDON
     int              m_region; // Region of the loaded game
 
     CCriticalSection m_critSection;
-    bool m_rewindSupported;
-    size_t m_rewindMaxFrames;
-    size_t m_serializeSize;
-    std::vector<uint32_t> m_lastSaveState;
-
-    /* Rewinding is implemented by applying XOR deltas on the specific parts
-     * of the save state buffer which has changed.
-     * In practice, this is very fast and simple (linear scan)
-     * and allows deltas to be compressed down to 1-3% of original save state size
-     * depending on the system. The algorithm runs on 32 bits at a time for speed.
-     * The state buffer has a fixed number of frames.
-     *
-     * Use std::deque here to achieve amortized O(1) on pop/push to front and back.
-     */
-    typedef std::pair<size_t, uint32_t> DeltaPair;
-    typedef std::vector<DeltaPair> DeltaPairVector;
-    std::deque<DeltaPairVector> m_rewindBuffer;
-
-    /* Run after retro_run() to append a new state delta to the rewind buffer. */
-    void AppendStateDelta();
+    bool             m_rewindSupported;
+    CSerialState     m_serialState;
 
     /**
      * This callback exists to give XBMC a chance to poll for input. XBMC already
