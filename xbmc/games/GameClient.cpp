@@ -718,11 +718,10 @@ void CGameClient::SetExtensions(const CStdString &strExtensionList)
 
     // Zip crashes every emulator I've tried so far
     // Skip it unless enabled via advanced settings
-    if (ext.Equals(".zip") && !g_advancedSettings.m_bAllowZip)
+    if (ext == ".zip" && !g_advancedSettings.m_bAllowZip)
       continue;
 
-    if (std::find(m_config.extensions.begin(), m_config.extensions.end(), ext) == m_config.extensions.end())
-      m_config.extensions.insert(ext);
+    m_config.extensions.insert(ext);
   }
 }
 
