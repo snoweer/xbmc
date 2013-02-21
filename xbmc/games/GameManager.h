@@ -93,6 +93,6 @@ private:
 
   std::vector<ADDON::GameClientConfig> m_gameClients;
   CCriticalSection m_critSection;
-  CStdStringArray m_remoteExtensions;
+  std::set<CStdString> m_remoteExtensions;
   CFileItem m_queuedFile;
 };

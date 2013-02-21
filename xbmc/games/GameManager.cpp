@@ -77,6 +77,8 @@ void CGameManager::RegisterAddon(GameClientPtr clientAddon, bool launchQueued /*
   if (!clientAddon)
     return;
 
+  CLog::Log(LOGDEBUG, "CGameManager: registering add-on %s", clientAddon->ID().c_str());
+
   CSingleLock lock(m_critSection);
 
   // If we are already tracking the add-on, erase it so we can refresh the data
@@ -148,8 +150,7 @@ void CGameManager::RegisterRemoteAddons(const VECADDONS &addons, bool fromDataba
     if (!gc->GetConfig().extensions.empty())
     {
       // Extensions were specified in addon.xml
-      m_remoteExtensions.insert(m_remoteExtensions.end(), gc->GetConfig().extensions.begin(),
-          gc->GetConfig().extensions.end());
+      m_remoteExtensions.insert(gc->GetConfig().extensions.begin(), gc->GetConfig().extensions.end());
     }
     else
     {
@@ -161,13 +162,14 @@ void CGameManager::RegisterRemoteAddons(const VECADDONS &addons, bool fromDataba
       {
         if (itLocal->id == remote->ID())
         {
-          m_remoteExtensions.insert(m_remoteExtensions.end(), itLocal->extensions.begin(), itLocal->extensions.end());
-          CLog::Log(LOGDEBUG, "CGameManager - Extensions for %s found in DLL", gc->ID().c_str());
+          m_remoteExtensions.insert(itLocal->extensions.begin(), itLocal->extensions.end());
+          CLog::Log(LOGDEBUG, "CGameManager - %u extensions for %s found in DLL", itLocal->extensions.size(), gc->ID().c_str());
           break;
         }
       }
     }
   }
+  CLog::Log(LOGDEBUG, "CGameManager: tracking %u remote extensions", m_remoteExtensions.size());
 }
 
 bool CGameManager::IsGame(const CStdString& path)
@@ -182,6 +184,7 @@ bool CGameManager::IsGame(const CStdString& path)
   // m_remoteExtensions with addons from the database.
   if (m_remoteExtensions.empty())
   {
+    CLog::Log(LOGDEBUG, "CGameManager: Initializing remote extensions cache");
     VECADDONS addons;
     CAddonDatabase database;
     database.Open();
@@ -191,12 +194,13 @@ bool CGameManager::IsGame(const CStdString& path)
 
   // Get the file extension
   CStdString extension(URIUtils::GetExtension(path));
-  if (extension.IsEmpty())
+  extension.ToLower();
+  if (extension.empty())
     return false;
 
-  extension.ToLower();
-
-  // If the file is a zip, rake the contents for valid game files
+  // Because .zip files can be audio or video, we rake the contents for valid
+  // game files. Zips with unknown extensions inside (arcade games, perhaps)
+  // may fail this test.
   if (extension.Equals(".zip"))
   {
     CStdString path2;
@@ -248,55 +252,12 @@ void CGameManager::GetGameClientIDs(const CFileItem& file, CStdStringArray &cand
 
   candidates.clear();
 
-  // Whether we should force a specific game client
-  if (!file.GetProperty("gameclient").empty())
-  {
-    CStdString id = file.GetProperty("gameclient").asString();
-    for (std::vector<GameClientConfig>::const_iterator it = m_gameClients.begin(); it != m_gameClients.end(); it++)
-    {
-      if (it->id == id)
-        { candidates.push_back(id); break; }
-    }
-    // If the game client isn't installed, it's not a valid candidate
-    return;
-  }
-
-  // Look for a "platform" hint in the file item
-  GamePlatform platformHint = PLATFORM_UNKNOWN;
-  if (file.GetGameInfoTag())
-    platformHint = CGameInfoTagLoader::GetPlatformByName(file.GetGameInfoTag()->GetPlatform()).id;
-  if (platformHint == PLATFORM_AMBIGUOUS)
-    platformHint = PLATFORM_UNKNOWN; // Treat ambiguous as unknown
-
-  // Get the file extension
-  CStdString strExtension(URIUtils::GetExtension(file.GetPath()));
-  strExtension.ToLower();
-
+  CStdString gameclient = file.GetProperty("gameclient").asString();
   for (std::vector<GameClientConfig>::const_iterator it = m_gameClients.begin(); it != m_gameClients.end(); it++)
   {
-    // Skip the game client if it doesn't support the platform. This check is
-    // only done if both the game client lists at least one valid platform, and
-    // the file extension is unambiguously matched to a platform.
-    if ((platformHint != PLATFORM_UNKNOWN) && (!it->platforms.empty()) &&
-        (std::find(it->platforms.begin(), it->platforms.end(), platformHint) == it->platforms.end()))
-      continue;
-
-    // If the game client lists supported extensions, filter by those as well
-    if (!it->extensions.empty())
-    {
-      // If the file is a zip, rake the contents for valid game files
-      if (strExtension.Equals(".zip"))
-      {
-        CStdString path2;
-        if (!CGameClient::GetEffectiveRomPath(file.GetPath(), it->extensions, path2))\
-          continue;
-      }
-      else if (std::find(it->extensions.begin(), it->extensions.end(), strExtension) == it->extensions.end())
-      {
-        continue;
-      }
-    }
-
-    candidates.push_back(it->id);
+    if (CGameClient::CanOpen(file, *it, true))
+      candidates.push_back(it->id);
+    if (!gameclient.empty() && it->id == gameclient)
+      break; // If the game client isn't installed, it's not a valid candidate
   }
 }

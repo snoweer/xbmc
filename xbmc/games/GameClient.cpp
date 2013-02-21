@@ -212,7 +212,7 @@ CGameClient::DataReceiver::SetPixelFormat_t       CGameClient::_SetPixelFormat  
 CGameClient::DataReceiver::SetKeyboardCallback_t  CGameClient::_SetKeyboardCallback = NULL;
 
 /* static */
-bool CGameClient::GetEffectiveRomPath(const CStdString &zipPath, const CStdStringArray &validExts, CStdString &effectivePath)
+bool CGameClient::GetEffectiveRomPath(const CStdString &zipPath, const std::set<CStdString> &validExts, CStdString &effectivePath)
 {
   // Default case: effective zip file is the zip file itself
   effectivePath = zipPath;
@@ -225,9 +225,12 @@ bool CGameClient::GetEffectiveRomPath(const CStdString &zipPath, const CStdStrin
   CStdString strUrl;
   URIUtils::CreateArchivePath(strUrl, "zip", zipPath, "");
 
+  CStdString strValidExts;
+  for (std::set<CStdString>::const_iterator it = validExts.begin(); it != validExts.end(); it++)
+    strValidExts += *it + "|";
+
   CFileItemList itemList;
-  if (CDirectory::GetDirectory(strUrl, itemList, StringUtils::JoinString(validExts, "|"),
-    DIR_FLAG_READ_CACHE | DIR_FLAG_NO_FILE_INFO) && itemList.Size())
+  if (CDirectory::GetDirectory(strUrl, itemList, strValidExts, DIR_FLAG_READ_CACHE | DIR_FLAG_NO_FILE_INFO) && itemList.Size())
   {
     // Use the first file discovered
     effectivePath = itemList[0]->GetPath();
@@ -237,9 +240,9 @@ bool CGameClient::GetEffectiveRomPath(const CStdString &zipPath, const CStdStrin
 }
 
 /* static */
-bool CGameClient::IsExtensionValid(const CStdString &ext, const CStdStringArray &vecExts)
+bool CGameClient::IsExtensionValid(const CStdString &ext, const std::set<CStdString> &setExts)
 {
-  if (vecExts.empty())
+  if (setExts.empty())
     return true; // Be optimistic :)
   if (ext.empty())
     return false;
@@ -247,7 +250,7 @@ bool CGameClient::IsExtensionValid(const CStdString &ext, const CStdStringArray 
   ext2.ToLower();
   if (ext2.at(0) != '.')
     ext2 = "." + ext2;
-  return std::find(vecExts.begin(), vecExts.end(), ext2) != vecExts.end();
+  return std::find(setExts.begin(), setExts.end(), ext2) != setExts.end();
 }
 
 CGameClient::CGameClient(const AddonProps &props) : CAddon(props)
@@ -401,6 +404,9 @@ bool CGameClient::CanOpen(const CFileItem &file, const GameClientConfig &config,
   if (!file.GetProperty("gameclient").empty() && file.GetProperty("gameclient").asString() != config.id)
     return false;
 
+  if (config.extensions.empty() && config.platforms.empty())
+    return true; // Client provided us with *no* useful information. Be optimistic.
+
   // Check platform
   if (!config.platforms.empty() && file.GetGameInfoTag())
   {
@@ -410,24 +416,34 @@ bool CGameClient::CanOpen(const CFileItem &file, const GameClientConfig &config,
         return false;
   }
 
-  // Check extension
-  if (!IsExtensionValid(URIUtils::GetExtension(file.GetPath()), config.extensions))
-    return false;
-
+  // If we don't do thorough screening, at least check inside the zip for valid files
   if (!useStrategies)
-    return true; // all done here
+  {
+    CStdString ext = URIUtils::GetExtension(file.GetPath());
+    if (ext == ".zip")
+    {
+      // If .zip is not valid, see if there is a file inside that is
+      CStdString path2;
+      return IsExtensionValid(ext, config.extensions) || GetEffectiveRomPath(file.GetPath(), config.extensions, path2);
+    }
+    // If the game client lists extensions, check those as well
+    return config.extensions.empty() ||
+        std::find(config.extensions.begin(), config.extensions.end(), ext) != config.extensions.end();
+  }
+  else
+  {
+    CStrategyUseHD        hd;
+    CStrategyUseParentZip outerzip;
+    CStrategyUseVFS       vfs;
+    CStrategyEnterZip     innerzip;
 
-  CStrategyUseHD        hd;
-  CStrategyUseParentZip outerzip;
-  CStrategyUseVFS       vfs;
-  CStrategyEnterZip     innerzip;
+    IRetroStrategy *strategy[4] = { &hd, &outerzip, &vfs, &innerzip };
 
-  IRetroStrategy *strategy[4] = { &hd, &outerzip, &vfs, &innerzip };
-
-  for (unsigned int i = 0; i < sizeof(strategy) / sizeof(strategy[0]); i++)
-    if (strategy[i]->CanLoad(config, file))
-      return true;
-  return false;
+    for (unsigned int i = 0; i < sizeof(strategy) / sizeof(strategy[0]); i++)
+      if (strategy[i]->CanLoad(config, file))
+        return true;
+    return false;
+  }
 }
 
 bool CGameClient::OpenFile(const CFileItem& file, const DataReceiver &callbacks)
@@ -706,7 +722,7 @@ void CGameClient::SetExtensions(const CStdString &strExtensionList)
       continue;
 
     if (std::find(m_config.extensions.begin(), m_config.extensions.end(), ext) == m_config.extensions.end())
-      m_config.extensions.push_back(ext);
+      m_config.extensions.insert(ext);
   }
 }
 

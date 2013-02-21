@@ -45,7 +45,7 @@ namespace ADDON
   struct GameClientConfig
   {
     CStdString                   id;          // Set from addon.xml
-    CStdStringArray              extensions;  // Set from addon.xml. Updated when the DLL is loaded
+    std::set<CStdString>         extensions;  // Set from addon.xml. Updated when the DLL is loaded
     GAME_INFO::GamePlatformArray platforms;   // Set from addon.xml
     bool                         bAllowVFS;   // Set when the DLL is loaded
     /**
@@ -162,13 +162,13 @@ namespace ADDON
      * contents and return the first file inside with a valid extension. If
      * this returns false, effectivePath will be set to strPath.
      */
-    static bool GetEffectiveRomPath(const CStdString &zipPath, const CStdStringArray &validExts, CStdString &effectivePath);
+    static bool GetEffectiveRomPath(const CStdString &zipPath, const std::set<CStdString> &validExts, CStdString &effectivePath);
 
     /**
      * If the game client was a bad boy and provided no extensions, this will
      * optimistically return true.
      */
-    static bool IsExtensionValid(const CStdString &ext, const CStdStringArray &vecExts);
+    static bool IsExtensionValid(const CStdString &ext, const std::set<CStdString> &setExts);
     bool IsExtensionValid(const CStdString &ext) const { return IsExtensionValid(ext, m_config.extensions); }
 
     CGameClient(const AddonProps &props);
@@ -185,8 +185,12 @@ namespace ADDON
     void DeInit();
 
     /**
-     * Perform the gamut of checks on the file - "gameclient" property, platform,
-     * extension, and a positive match on at least one of the above strategies.
+     * Perform the gamut of checks on the file - "gameclient" property,
+     * platform, extension, and a positive match on at least one of the above
+     * strategies. If config.bAllowVFS and config.bRequireZip are provided,
+     * then useStrategies=true can be used to allow more lenient/accurate
+     * testing, especially for files inside zips (when .zip isn't supported)
+     * and files on the VFS.
      */
     static bool CanOpen(const CFileItem &file, const GameClientConfig &config, bool useStrategies = false);
     bool CanOpen(const CFileItem &file, bool useStrategies = false) const { return CanOpen(file, m_config, useStrategies); }
