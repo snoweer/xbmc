@@ -293,7 +293,7 @@ GameClientPtr CRetroPlayer::ChooseAddon(const CFileItem &file, const CStdStringA
   int btnid = CGUIDialogContextMenu::ShowAndGetChoice(choices);
   if (0 <= btnid && btnid < (int)clients.size())
   {
-    CLog::Log(LOGDEBUG, "RetroPlayer: Using %s", m_gameClient->ID().c_str());
+    CLog::Log(LOGDEBUG, "RetroPlayer: Using %s", clients[btnid]->ID().c_str());
     return clients[btnid];
   }
   else if (btnid == (int)clients.size())
