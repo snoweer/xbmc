@@ -351,6 +351,7 @@ class CAdvancedSettings
     bool m_bPreferVFS;                // Prefer using XBMC to load files if the emulator supports it (~50% do)
     bool m_bAllowZip;                 // ~50% say they load .zips, but some crash. If the emulator allows XBMC to
                                       // load from memory (VFS), XBMC can still safely load games from within zips
+    bool m_bEnableRewind;             // Enable the rewind feature for ROMs (if they support it)
 
     bool m_guiVisualizeDirtyRegions;
     int  m_guiAlgorithmDirtyRegions;

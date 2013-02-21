@@ -321,6 +321,7 @@ void CAdvancedSettings::Initialize()
   m_iGameAudioBuffer = 500;
   m_bPreferVFS = false;
   m_bAllowZip = true;
+  m_bEnableRewind = true;
 
   m_databaseMusic.Reset();
   m_databaseVideo.Reset();
@@ -1061,6 +1062,7 @@ void CAdvancedSettings::ParseSettingsFile(const CStdString &file)
     XMLUtils::GetUInt(pElement, "audiobuffer", m_iGameAudioBuffer);
     XMLUtils::GetBoolean(pElement, "prefervfs", m_bPreferVFS);
     XMLUtils::GetBoolean(pElement, "allowzip", m_bAllowZip);
+    XMLUtils::GetBoolean(pElement, "enablerewind", m_bEnableRewind);
   }
 
   // load in the GUISettings overrides:

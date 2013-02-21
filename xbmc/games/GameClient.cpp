@@ -561,7 +561,7 @@ bool CGameClient::OpenFile(const CFileItem& file, const DataReceiver &callbacks)
   size_t state_size = m_dll.retro_serialize_size();
   if (state_size)
   {
-     m_rewindSupported = true;
+     m_rewindSupported = g_advancedSettings.m_bEnableRewind;
      m_rewindMaxFrames = 60.0 * m_frameRate; // Allow up to rougly 60 seconds worth of rewind.
      m_serializeSize = state_size;
      m_lastSaveState.resize((state_size + sizeof(uint32_t) - 1) / sizeof(uint32_t));
