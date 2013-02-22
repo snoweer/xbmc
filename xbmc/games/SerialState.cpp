@@ -23,13 +23,15 @@
 
 #include "SerialState.h"
 
+#define PAD_TO_CEIL(x, bytes) (((x) + (bytes) - 1) / (bytes))
+
 void CSerialState::Init(size_t frameSize, size_t frameCount)
 {
   Reset();
   m_frameSize = frameSize;
   m_maxFrames = frameCount;
-  m_state.resize((m_frameSize + sizeof(uint32_t) - 1) / sizeof(uint32_t)); // Pad to 4 bytes
-  m_nextState.resize((m_frameSize + sizeof(uint32_t) - 1) / sizeof(uint32_t)); // Pad to 4 bytes
+  m_state.resize(PAD_TO_CEIL(m_frameSize, sizeof(uint32_t))); // Pad to 4 bytes
+  m_nextState.resize(PAD_TO_CEIL(m_frameSize, sizeof(uint32_t))); // Pad to 4 bytes
 }
 
 void CSerialState::Reset()
@@ -50,10 +52,13 @@ void CSerialState::AdvanceFrame()
   {
     uint32_t xor_val = m_state[i] ^ m_nextState[i];
     if (xor_val)
-      buffer.push_back(DeltaPair(i, xor_val));
+    {
+      DeltaPair pair = {i, xor_val};
+      buffer.push_back(pair);
+    }
   }
 
-  m_state = m_nextState; // Can be optimized with std::move() in C++11 or some ring-buffer-esque thing.
+  memcpy(m_state.data(), m_nextState.data(), m_state.size());
 
   while (m_rewindBuffer.size() > m_maxFrames)
     m_rewindBuffer.pop_front();
@@ -64,24 +69,14 @@ unsigned int CSerialState::RewindFrames(unsigned int frameCount)
   unsigned int rewound = 0;
   while (frameCount > 0 && !m_rewindBuffer.empty())
   {
-    const DeltaPairVector& buffer = m_rewindBuffer.back();
+    const DeltaPair *buffer = m_rewindBuffer.back().data();
 
     size_t i;
-    size_t bufferSize = buffer.size();
-    for (i = 0; i + 8 <= bufferSize; i += 8)
-    {
-      m_state[buffer[i + 0].first] ^= buffer[i + 0].second;
-      m_state[buffer[i + 1].first] ^= buffer[i + 1].second;
-      m_state[buffer[i + 2].first] ^= buffer[i + 2].second;
-      m_state[buffer[i + 3].first] ^= buffer[i + 3].second;
-      m_state[buffer[i + 4].first] ^= buffer[i + 4].second;
-      m_state[buffer[i + 5].first] ^= buffer[i + 5].second;
-      m_state[buffer[i + 6].first] ^= buffer[i + 6].second;
-      m_state[buffer[i + 7].first] ^= buffer[i + 7].second;
-    }
-
-    for ( ; i < bufferSize; i++)
-      m_state[buffer[i + 0].first] ^= buffer[i + 0].second;
+    size_t bufferSize = m_rewindBuffer.back().size();
+    // buffer pointer redirection violates data-dependency requirements... no
+    // vecorization for us :(
+    for (int i = 0; i < bufferSize; i++)
+      m_state[buffer[i].pos] ^= buffer[i].delta;
 
     rewound++;
     frameCount--;

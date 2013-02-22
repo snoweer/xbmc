@@ -51,14 +51,18 @@ private:
 
   /**
    * Rewinding is implemented by applying XOR deltas on the specific parts of
-   * the save state buffer which has changed. In practice, this is very fast
+   * the save state buffer which have changed. In practice, this is very fast
    * and simple (linear scan) and allows deltas to be compressed down to 1-3%
    * of original save state size depending on the system. The algorithm runs on
    * 32 bits at a time for speed. The state buffer has a fixed number of frames.
    *
    * Use std::deque here to achieve amortized O(1) on pop/push to front and back.
    */
-  typedef std::pair<size_t, uint32_t> DeltaPair;
-  typedef std::vector<DeltaPair>      DeltaPairVector;
-  std::deque<DeltaPairVector>         m_rewindBuffer;
+  struct DeltaPair
+  {
+    size_t   pos;
+    uint32_t delta;
+  };
+  typedef std::vector<DeltaPair> DeltaPairVector;
+  std::deque<DeltaPairVector>    m_rewindBuffer;
 };
