@@ -131,6 +131,13 @@ void CJoystick::Reset(bool axis /*=false*/)
 
 void CJoystick::Update(CRetroPlayerInput *joystickHandler)
 {
+  static int i = 0;
+  if (++i >= 60)
+  {
+    CLog::Log(LOGDEBUG, "SDL_EVENT: Linux joystick input events are %s", IsEnabled() ? "enabled" : "disabled");
+    i = 0;
+  }
+
   if (!IsEnabled())
     return;
 
@@ -280,6 +287,7 @@ void CJoystick::Update(CRetroPlayerInput *joystickHandler)
 
 void CJoystick::Update(SDL_Event& joyEvent)
 {
+  CLog::Log(LOGDEBUG, "SDL_EVENT: Joysticks are %s", IsEnabled() ? "enabled" : "disabled");
   if (!IsEnabled())
     return;
 
@@ -296,8 +304,14 @@ void CJoystick::Update(SDL_Event& joyEvent)
   {
     CRetroPlayer* rp = dynamic_cast<CRetroPlayer*>(g_application.m_pPlayer);
     if (rp)
+    {
+      CLog::Log(LOGDEBUG, "SDL_EVENT: Got RetroPlayer input handler");
       joystickHandler = &rp->GetInput();
+    }
   }
+
+  if (!joystickHandler)
+    CLog::Log(LOGDEBUG, "SDL_EVENT: Couldn't get RetroPlayer input handler! Not playing a game?");
 
   switch(joyEvent.type)
   {
@@ -308,7 +322,10 @@ void CJoystick::Update(SDL_Event& joyEvent)
     SetButtonActive();
     CLog::Log(LOGDEBUG, "Joystick %d button %d Down", joyId, buttonId);
     if (joystickHandler)
+    {
+      CLog::Log(LOGDEBUG, "SDL_EVENT: Sending button down event to input handler");
       joystickHandler->ProcessButtonDown(m_JoystickNames[joyEvent.jbutton.which], joyEvent.jbutton.which, joyEvent.jbutton.button);
+    }
     break;
 
   case SDL_JOYAXISMOTION:
@@ -316,8 +333,11 @@ void CJoystick::Update(SDL_Event& joyEvent)
     axisId = joyEvent.jaxis.axis + 1;
     m_NumAxes = SDL_JoystickNumAxes(m_Joysticks[joyId]);
     if (joystickHandler)
+    {
+      CLog::Log(LOGDEBUG, "SDL_EVENT: Sending axis motion event to input handler");
       joystickHandler->ProcessAxisState(m_JoystickNames[joyEvent.jbutton.which], joyEvent.jbutton.which, joyEvent.jaxis.axis,
           NormalizeAxis(joyEvent.jaxis.value));
+    }
     if (axisId<=0 || axisId>=MAX_AXES)
     {
       CLog::Log(LOGERROR, "Axis Id out of range. Maximum supported axis: %d", MAX_AXES);
@@ -348,6 +368,7 @@ void CJoystick::Update(SDL_Event& joyEvent)
     CLog::Log(LOGDEBUG, "Joystick %d Hat %d Down with position %d", joyId, buttonId, m_HatState);
     if (joystickHandler)
     {
+      CLog::Log(LOGDEBUG, "SDL_EVENT: Sending hat motion event to input handler");
       CRetroPlayerInput::Hat hat = CRetroPlayerInput::Hat();
       if      (joyEvent.jhat.value & SDL_HAT_UP)    hat.up = 1;
       else if (joyEvent.jhat.value & SDL_HAT_DOWN)  hat.down = 1;
@@ -366,7 +387,12 @@ void CJoystick::Update(SDL_Event& joyEvent)
     SetButtonActive(false);
     CLog::Log(LOGDEBUG, "Joystick %d button %d Up", joyEvent.jbutton.which, m_ButtonId);
     if (joystickHandler)
+    {
+      CLog::Log(LOGDEBUG, "SDL_EVENT: Sending button up event to input handler");
       joystickHandler->ProcessButtonDown(m_JoystickNames[joyEvent.jbutton.which], joyEvent.jbutton.which, joyEvent.jbutton.button);
+    }
+    ignore = true;
+    break;
 
   default:
     ignore = true;
