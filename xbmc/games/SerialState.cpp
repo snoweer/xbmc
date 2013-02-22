@@ -44,6 +44,9 @@ void CSerialState::Reset()
   SAFE_DELETE_ARRAY(m_state);
   SAFE_DELETE_ARRAY(m_nextState);
   m_rewindBuffer.clear();
+  m_frameSize = 0;
+  m_maxFrames = 0;
+  // m_stateSize is undefined
 }
 
 void CSerialState::AdvanceFrame()

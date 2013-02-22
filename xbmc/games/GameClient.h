@@ -242,16 +242,17 @@ namespace ADDON
     unsigned int RewindFrames(unsigned int frames);
 
     // Returns how many frames it is possible to rewind with a call to RewindFrames().
-    size_t GetAvailableFrames() const { return m_serialState.GetFramesAvailable(); }
+    size_t GetAvailableFrames() const { return m_rewindSupported ? m_serialState.GetFramesAvailable() : 0; }
 
     // Returns the maximum amount of frames that can ever be rewound.
-    int GetMaxFrames() const { return m_serialState.GetMaxFrames(); }
+    size_t GetMaxFrames() const { return m_rewindSupported ? m_serialState.GetMaxFrames() : 0; }
 
     // Reset the game, if running.
     void Reset();
 
     double GetFrameRate() const { return m_frameRate; }
     double GetSampleRate() const { return m_sampleRate; }
+    void   SetFrameRate(double framerate) { m_frameRate = framerate; } // Adjusted to match AE sample rate
 
   private:
     void Initialize();

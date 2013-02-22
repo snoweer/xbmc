@@ -349,7 +349,7 @@ void CRetroPlayer::Process()
   // Calculate the framerate of the emualtor now (i.e. how often RunFrame() is called)
   double framerate = m_gameClient->GetFrameRate();
 
-  // Safe defaults?
+  // Safe defaults? Was this test done earlier?
   if (framerate < 5.0 || framerate > 100.0)
   {
     CLog::Log(LOGNOTICE, "RetroPlayer: Game client reported %f fps, assuming 60 fps", framerate);
@@ -365,6 +365,12 @@ void CRetroPlayer::Process()
   }
   else
     CLog::Log(LOGDEBUG, "RetroPlayer: No change in frame rate due to no audio");
+
+  // Got our final framerate. Record it back in our game client. Note, this
+  // modifies the outcome of Seek(), SeekPercent(), GetPercent() and GetTotalTime().
+  // It might be good to re-size the savestate buffer to maintain a constant time
+  // duration (like 60.0s)
+  m_gameClient->SetFrameRate(framerate);
 
   // Start video and audio now that our parameters have been determined
   m_video.GoForth(framerate, m_PlayerOptions.fullscreen);
@@ -485,37 +491,36 @@ void CRetroPlayer::Seek(bool bPlus, bool bLargeStep)
   if (!m_gameClient)
     return;
 
-  int seek_seconds = bLargeStep ? 10 : 1;
+  int seek_seconds = bLargeStep ? 10 : 1; // Seem like good values, probably depends on max rewind, needs testing
   m_gameClient->RewindFrames((unsigned int)(seek_seconds * m_gameClient->GetFrameRate()));
 }
 
 void CRetroPlayer::SeekPercentage(float fPercent)
 {
-  if (!m_gameClient)
-    return;
+  if (!m_gameClient || !m_gameClient->GetMaxFrames())
+    return; // Rewind not supported for game.
 
-  int max_buffer = m_gameClient->GetMaxFrames();
-  if (!max_buffer) // Rewind not supported for game.
-     return;
+  if (fPercent < 0.0f)
+    fPercent = 0.0f;
+  else if (fPercent > 100.0f)
+    fPercent = 100.0f;
 
+  int max_buffer     = m_gameClient->GetMaxFrames();
   int current_buffer = m_gameClient->GetAvailableFrames();
-  int target_buffer = (int)(max_buffer * fPercent / 100.0f);
-  int rewind_frames = current_buffer - target_buffer;
+
+  int target_buffer  = (int)(max_buffer * fPercent / 100.0f);
+  int rewind_frames  = current_buffer - target_buffer;
+
   if (rewind_frames > 0)
     m_gameClient->RewindFrames(rewind_frames);
 }
 
 float CRetroPlayer::GetPercentage()
 {
-  if (!m_gameClient)
+  if (!m_gameClient || !m_gameClient->GetMaxFrames())
     return 0.0f;
 
-  int max_buffer = m_gameClient->GetMaxFrames();
-  if (!max_buffer)
-     return 0.0f;
-
-  int current_buffer = m_gameClient->GetAvailableFrames();
-  return (current_buffer * 100.0f) / max_buffer;
+  return (100.0f * m_gameClient->GetAvailableFrames()) / m_gameClient->GetMaxFrames();
 }
 
 void CRetroPlayer::SeekTime(int64_t iTime)
@@ -523,12 +528,14 @@ void CRetroPlayer::SeekTime(int64_t iTime)
   if (!m_gameClient)
     return;
 
-  SeekPercentage(100.0f * iTime / GetTotalTime());
+  // Avoid SIGFPE
+  int64_t totalTime = GetTotalTime();
+  SeekPercentage(totalTime > 0 ? 100.0f * iTime / totalTime : 0.0f);
 }
 
 int64_t CRetroPlayer::GetTime()
 {
-  if (!m_gameClient)
+  if (!m_gameClient || !m_gameClient->GetFrameRate())
     return 0;
 
   int current_buffer = m_gameClient->GetAvailableFrames();
@@ -537,7 +544,7 @@ int64_t CRetroPlayer::GetTime()
 
 int64_t CRetroPlayer::GetTotalTime()
 {
-  if (!m_gameClient)
+  if (!m_gameClient || !m_gameClient->GetFrameRate())
     return 0;
 
   int max_buffer = m_gameClient->GetMaxFrames();
