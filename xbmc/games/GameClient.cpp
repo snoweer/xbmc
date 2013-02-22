@@ -661,15 +661,16 @@ void CGameClient::RunFrame()
 
 unsigned int CGameClient::RewindFrames(unsigned int frames)
 {
+  unsigned int rewound = 0;
   if (m_bIsPlaying && m_rewindSupported)
   {
     CSingleLock lock(m_critSection);
 
-    unsigned int rewound = m_serialState.RewindFrames(frames);
+    rewound = m_serialState.RewindFrames(frames);
     if (rewound)
       m_dll.retro_unserialize(m_serialState.GetState(), m_serialState.GetFrameSize());
-    return rewound;
   }
+  return rewound;
 }
 
 void CGameClient::Reset()

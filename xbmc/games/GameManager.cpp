@@ -163,13 +163,13 @@ void CGameManager::RegisterRemoteAddons(const VECADDONS &addons, bool fromDataba
         if (itLocal->id == remote->ID())
         {
           m_remoteExtensions.insert(itLocal->extensions.begin(), itLocal->extensions.end());
-          CLog::Log(LOGDEBUG, "CGameManager - %u extensions for %s found in DLL", itLocal->extensions.size(), gc->ID().c_str());
+          CLog::Log(LOGDEBUG, "CGameManager - %d extensions for %s found in DLL", (int)(itLocal->extensions.size()), gc->ID().c_str());
           break;
         }
       }
     }
   }
-  CLog::Log(LOGDEBUG, "CGameManager: tracking %u remote extensions", m_remoteExtensions.size());
+  CLog::Log(LOGDEBUG, "CGameManager: tracking %d remote extensions", (int)(m_remoteExtensions.size()));
 }
 
 bool CGameManager::IsGame(const CStdString& path)
