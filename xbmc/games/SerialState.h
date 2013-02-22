@@ -28,13 +28,14 @@
 class CSerialState
 {
 public:
-  CSerialState() : m_frameSize(0), m_maxFrames(0) { }
+  CSerialState() : m_frameSize(0), m_maxFrames(0), m_stateSize(0), m_state(NULL), m_nextState(NULL) { }
+  ~CSerialState() { Reset(); }
 
   void Init(size_t frameSize, size_t frameCount);
-  void Reset(); // Clear up any memory allocated
+  void Reset(); // Free up any memory allocated
 
-  uint8_t *GetState() { return reinterpret_cast<uint8_t*>(m_state.data()); }
-  uint8_t *GetNextState() { return reinterpret_cast<uint8_t*>(m_nextState.data()); }
+  uint8_t *GetState() const { return reinterpret_cast<uint8_t*>(m_state); }
+  uint8_t *GetNextState() const { return reinterpret_cast<uint8_t*>(m_nextState); }
   size_t GetFrameSize() const { return m_frameSize; }
   size_t GetMaxFrames() const { return m_maxFrames; }
   size_t GetFramesAvailable() const { return m_rewindBuffer.size(); }
@@ -43,11 +44,19 @@ public:
   unsigned int RewindFrames(unsigned int frameCount);
 
 private:
+  // Size of the serialized data returned by retro_serialize_size()
   size_t m_frameSize;
+  // Maximum number of frames in the history rewind buffer
   size_t m_maxFrames;
 
-  std::vector<uint32_t> m_state;
-  std::vector<uint32_t> m_nextState;
+  /**
+   * Simple double-buffering. After XORing the two states, the next becomes the
+   * current, and the current because a buffer for the next call to
+   * retro_serialize().
+   */
+  size_t   m_stateSize;
+  uint32_t *m_state;
+  uint32_t *m_nextState;
 
   /**
    * Rewinding is implemented by applying XOR deltas on the specific parts of

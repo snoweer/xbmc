@@ -22,22 +22,27 @@
 // Code is by Hans-Kristian Arntzen
 
 #include "SerialState.h"
+#include "system.h" // for SAFE_DELETE_ARRAY()
 
+
+// Pad forward to nearest boundary of bytes
 #define PAD_TO_CEIL(x, bytes) (((x) + (bytes) - 1) / (bytes))
 
 void CSerialState::Init(size_t frameSize, size_t frameCount)
 {
   Reset();
-  m_frameSize = frameSize;
+  m_frameSize = frameSize; // Size of the frame from retro_serialize_size()
   m_maxFrames = frameCount;
-  m_state.resize(PAD_TO_CEIL(m_frameSize, sizeof(uint32_t))); // Pad to 4 bytes
-  m_nextState.resize(PAD_TO_CEIL(m_frameSize, sizeof(uint32_t))); // Pad to 4 bytes
+  m_stateSize = PAD_TO_CEIL(m_frameSize, sizeof(uint32_t)); // Size of the padded frame ( >= m_frameSize)
+  m_state = new uint32_t[m_stateSize];
+  m_nextState = new uint32_t[m_stateSize];
 }
 
+// Make sure m_state and m_nextState are zero-initialized in the constructor
 void CSerialState::Reset()
 {
-  m_state.clear();
-  m_nextState.clear();
+  SAFE_DELETE_ARRAY(m_state);
+  SAFE_DELETE_ARRAY(m_nextState);
   m_rewindBuffer.clear();
 }
 
@@ -47,8 +52,7 @@ void CSerialState::AdvanceFrame()
   DeltaPairVector& buffer = m_rewindBuffer.back();
 
   // Remember, we padded these to the next 32 bytes
-  size_t stateSize = m_state.size();
-  for (size_t i = 0; i < stateSize; i++)
+  for (size_t i = 0; i < m_stateSize; i++)
   {
     uint32_t xor_val = m_state[i] ^ m_nextState[i];
     if (xor_val)
@@ -58,7 +62,8 @@ void CSerialState::AdvanceFrame()
     }
   }
 
-  memcpy(m_state.data(), m_nextState.data(), m_state.size());
+  // Delta is generated, bring the new frame forward (m_nextState is now disposable)
+  std::swap(m_state, m_nextState);
 
   while (m_rewindBuffer.size() > m_maxFrames)
     m_rewindBuffer.pop_front();
@@ -71,11 +76,10 @@ unsigned int CSerialState::RewindFrames(unsigned int frameCount)
   {
     const DeltaPair *buffer = m_rewindBuffer.back().data();
 
-    size_t i;
     size_t bufferSize = m_rewindBuffer.back().size();
-    // buffer pointer redirection violates data-dependency requirements... no
-    // vecorization for us :(
-    for (int i = 0; i < bufferSize; i++)
+    // buffer pointer redirection violates data-dependency requirements...
+    // no vecorization for us :(
+    for (size_t i = 0; i < bufferSize; i++)
       m_state[buffer[i].pos] ^= buffer[i].delta;
 
     rewound++;
