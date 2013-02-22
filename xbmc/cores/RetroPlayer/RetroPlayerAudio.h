@@ -43,24 +43,26 @@ public:
   /**
    * Rev up the engines and start the thread.
    */
-  void GoForth(int samplerate);
+  unsigned int GoForth(double allegedSamplerate);
 
   /**
    * Send audio samples to be processed by this class. Data format is:
    * int16_t buf[4] = { l, r, l, r }; this would be 2 frames.
    */
   void SendAudioFrames(const int16_t *data, size_t frames);
+  //void SendAudioFrames(int16_t left, size_t right);
 
-  double GetDelay();
+  unsigned int GetSampleRate() const;
+  double GetDelay() const;
 
 protected:
   virtual void Process();
 
 private:
+  IAEStream          *m_pAudioStream;
   std::queue<Packet> m_packets;
+  CCriticalSection   m_critSection;
+  CEvent             m_streamReady;
   CEvent             m_packetReady;
   CEvent             m_pauseEvent;
-  CCriticalSection   m_critSection;
-  int                m_samplerate;
-  IAEStream          *m_pAudioStream;
 };

@@ -27,10 +27,7 @@
 #include "cores/dvdplayer/DVDClock.h"
 #include "utils/log.h"
 
-CRetroPlayerAudio::CRetroPlayerAudio()
-  : CThread("RetroPlayerAudio"),
-    m_samplerate(0),
-    m_pAudioStream(NULL)
+CRetroPlayerAudio::CRetroPlayerAudio() : CThread("RetroPlayerAudio"), m_pAudioStream(NULL)
 {
 }
 
@@ -39,21 +36,37 @@ CRetroPlayerAudio::~CRetroPlayerAudio()
   StopThread();
 }
 
-void CRetroPlayerAudio::GoForth(int samplerate)
+unsigned int CRetroPlayerAudio::GoForth(double allegedSamplerate)
 {
-  m_samplerate = samplerate;
-  Create();
-}
+  if (m_pAudioStream)
+    { CAEFactory::FreeStream(m_pAudioStream); m_pAudioStream = NULL; }
 
-void CRetroPlayerAudio::Process()
-{
-  CLog::Log(LOGINFO, "RetroPlayerAudio: Creating audio stream, sample rate = %d", m_samplerate);
+  // Reported sample rates look like 32040.5 or 31997.22. Round up to nearest
+  // 10 or so, cast to int, and let AE figure out the most appropriate samplerate.
+  const unsigned int roundupto = 10;
+  const unsigned int samplerate = ((unsigned int)allegedSamplerate / roundupto + 1) * roundupto;
+
+  CLog::Log(LOGINFO, "RetroPlayerAudio: Creating audio stream, sample rate hint = %u", samplerate);
   static enum AEChannel map[3] = {AE_CH_FL, AE_CH_FR, AE_CH_NULL};
-  m_pAudioStream = CAEFactory::MakeStream(AE_FMT_S16NE, m_samplerate, m_samplerate, CAEChannelInfo(map), AESTREAM_AUTOSTART);
+  m_pAudioStream = CAEFactory::MakeStream(AE_FMT_S16NE, samplerate, samplerate, CAEChannelInfo(map), AESTREAM_AUTOSTART);
 
   if (!m_pAudioStream)
   {
     CLog::Log(LOGERROR, "RetroPlayerAudio: Failed to create audio stream");
+    return 0;
+  }
+  else
+  {
+    Create();
+    return m_pAudioStream->GetSampleRate();
+  }
+}
+
+void CRetroPlayerAudio::Process()
+{
+  if (!m_pAudioStream)
+  {
+    CLog::Log(LOGERROR, "RetroPlayerAudio: Process() called with no audio stream!");
     return;
   }
 
@@ -83,7 +96,7 @@ void CRetroPlayerAudio::Process()
 
     // Calculate some inherent properties of the sound data
     const DWORD  frameSize      = 2 * sizeof(uint16_t); // L (2) + R (2)
-    const double secondsPerByte = 1.0 / (m_samplerate * frameSize);
+    const double secondsPerByte = 1.0 / (m_pAudioStream->GetSampleRate() * frameSize);
 
     // Calculate a timeout when this definitely should be done
     double timeout;
@@ -123,11 +136,15 @@ void CRetroPlayerAudio::Process()
   }
 
   m_bStop = true;
-  CAEFactory::FreeStream(m_pAudioStream);
-  m_pAudioStream = NULL;
+  { CAEFactory::FreeStream(m_pAudioStream); m_pAudioStream = NULL; }
 }
 
-double CRetroPlayerAudio::GetDelay()
+unsigned int CRetroPlayerAudio::GetSampleRate() const
+{
+  return !m_bStop && m_pAudioStream ? m_pAudioStream->GetSampleRate() : 0;
+}
+
+double CRetroPlayerAudio::GetDelay() const
 {
   return !m_bStop && m_pAudioStream ? m_pAudioStream->GetDelay() : 0.0;
 }

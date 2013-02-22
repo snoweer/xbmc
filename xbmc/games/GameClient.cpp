@@ -537,7 +537,7 @@ bool CGameClient::OpenFile(const CFileItem& file, const DataReceiver &callbacks)
   unsigned int maxHeight  = av_info.geometry.max_height; // 448
   float aspectRatio       = av_info.geometry.aspect_ratio; // 0.0
   double fps              = av_info.timing.fps; // 60.098811862348406
-  double sampleRate       = av_info.timing.sample_rate; // 32040.5
+  double sampleRate       = av_info.timing.sample_rate; // 32040.5 or 31997.222656
 
   CLog::Log(LOGINFO, "GameClient: ---------------------------------------");
   CLog::Log(LOGINFO, "GameClient: Opened file %s", file.GetPath().c_str());

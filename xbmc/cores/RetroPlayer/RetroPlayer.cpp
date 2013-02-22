@@ -327,38 +327,46 @@ bool CRetroPlayer::CloseFile()
 
 void CRetroPlayer::Process()
 {
-  // Prepare the video thread
+  // We want to sync the video clock to the audio. The creation of the audio
+  // thread will return the decided-upon sample rate.
+  unsigned int samplerate = 0;
+  double allegedSamplerate = m_gameClient->GetSampleRate();
+
+  // No sound if invalid sample rate
+  if (allegedSamplerate > 0)
+  {
+    // The audio thread will return the sample rate decided by the audio stream
+    samplerate = m_audio.GoForth(allegedSamplerate);
+    if (samplerate)
+      CLog::Log(LOGDEBUG, "RetroPlayer: Created audio stream with sample rate %u from reported rate of %f",
+        samplerate, (float)allegedSamplerate);
+    else
+      CLog::Log(LOGERROR, "RetroPlayer: Error creating audio stream with sample rate %f", (float)allegedSamplerate);
+  }
+  else
+    CLog::Log(LOGERROR, "RetroPlayer: Error, invalid game client sample rate %f", (float)allegedSamplerate);
+
+  // Calculate the framerate of the emualtor now (i.e. how often RunFrame() is called)
   double framerate = m_gameClient->GetFrameRate();
-  if (framerate < 5 || framerate > 100)
+
+  // Safe defaults?
+  if (framerate < 5.0 || framerate > 100.0)
   {
     CLog::Log(LOGNOTICE, "RetroPlayer: Game client reported %f fps, assuming 60 fps", framerate);
     framerate = 60;
   }
 
-  // Start the audio thread
-  const double samplerate = m_gameClient->GetSampleRate();
-  // TODO: min/max sample rate?
-  if (samplerate < 1 || samplerate > 384000)
+  if (samplerate)
   {
-    // TODO: Put checks in CRetroPlayerAudio::SendAudioFrames() for inactivity
-    CLog::Log(LOGNOTICE, "RetroPlayer: Game client reported sample rate of %f, continuing without sound", samplerate);
+    // If audio is playing, use that as the reference clock and adjust our framerate accordingly
+    const double oldFramerate = framerate; // for logging purposes
+    framerate *= samplerate / allegedSamplerate;
+    CLog::Log(LOGDEBUG, "RetroPlayer: Frame rate changed from %f to %f", oldFramerate, framerate);
   }
   else
-  {
-    // Adjust video clock to give us an integer sample rate
-    const int newSamplerate = (int)samplerate;
+    CLog::Log(LOGDEBUG, "RetroPlayer: No change in frame rate due to no audio");
 
-    if (newSamplerate != samplerate)
-    {
-      const double oldFramerate = framerate;
-      framerate *= newSamplerate / samplerate;
-
-      CLog::Log(LOGDEBUG, "RetroPlayer: Frame rate changed from %f to %f", oldFramerate, framerate);
-      CLog::Log(LOGDEBUG, "RetroPlayer: Sample rate changed from %f to %d", samplerate, newSamplerate);
-    }
-    m_audio.GoForth(newSamplerate);
-  }
-
+  // Start video and audio now that our parameters have been determined
   m_video.GoForth(framerate, m_PlayerOptions.fullscreen);
   m_input.Begin();
 
@@ -419,8 +427,9 @@ void CRetroPlayer::OnVideoFrame(const void *data, unsigned width, unsigned heigh
 void CRetroPlayer::OnAudioSample(int16_t left, int16_t right)
 {
   int16_t buf[2] = {left, right};
-  // Too many small allocations
+  // Too many small allocations?
   //OnAudioSampleBatch(buf, 1);
+  //m_retroPlayer->m_audio.SendAudioFrames(left, right);
 }
 
 /* static */
