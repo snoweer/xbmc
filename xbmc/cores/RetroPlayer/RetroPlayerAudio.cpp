@@ -71,8 +71,6 @@ void CRetroPlayerAudio::Process()
   }
 
   Packet packet = {};
-  // So we can clean up later
-  unsigned char* data = NULL;
 
   while (!m_bStop)
   {
@@ -91,8 +89,8 @@ void CRetroPlayerAudio::Process()
       m_packets.pop();
     }
 
-    // So we can clean up later
-    data = packet.data;
+    // So we can clean up packet.data later
+    unsigned char* data = packet.data;
 
     // Calculate some inherent properties of the sound data
     const DWORD  frameSize      = 2 * sizeof(uint16_t); // L (2) + R (2)
@@ -109,8 +107,8 @@ void CRetroPlayerAudio::Process()
     do
     {
       // Fast-forward packet data on successful add
-      copied = m_pAudioStream->AddData(packet.data, packet.size);
-      packet.data += copied;
+      copied = m_pAudioStream->AddData(data, packet.size);
+      data += copied;
       packet.size -= copied;
 
       // Test for incomplete frames remaining
@@ -131,7 +129,7 @@ void CRetroPlayerAudio::Process()
       CLog::Log(LOGNOTICE, "RetroPlayerAudio: %d bytes left over after rendering, discarding", packet.size);
 
     // Clean up the data allocated in CRetroPlayer::OnAudioSampleBatch()
-    delete[] data;
+    delete[] packet.data;
     data = NULL;
   }
 
