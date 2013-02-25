@@ -46,7 +46,7 @@ void CSerialState::Reset()
   m_rewindBuffer.clear();
   m_frameSize = 0;
   m_maxFrames = 0;
-  // m_stateSize is undefined
+  m_stateSize = 0;
 }
 
 void CSerialState::AdvanceFrame()
@@ -54,7 +54,6 @@ void CSerialState::AdvanceFrame()
   m_rewindBuffer.push_back(DeltaPairVector());
   DeltaPairVector& buffer = m_rewindBuffer.back();
 
-  // Remember, we padded these to the next 32 bytes
   for (size_t i = 0; i < m_stateSize; i++)
   {
     uint32_t xor_val = m_state[i] ^ m_nextState[i];
