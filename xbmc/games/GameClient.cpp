@@ -360,10 +360,16 @@ void CGameClient::DeInit()
 {
   if (m_dll.IsLoaded())
   {
-    m_dll.retro_unload_game();
-    m_bIsPlaying = false;
-    m_dll.retro_deinit();
-    m_bIsInited = false;
+    if (m_bIsPlaying)
+    {
+      m_dll.retro_unload_game();
+      m_bIsPlaying = false;
+    }
+    if (m_bIsInited)
+    {
+      m_dll.retro_deinit();
+      m_bIsInited = false;
+    }
     try
     {
       m_dll.Unload();
@@ -609,7 +615,7 @@ void CGameClient::CloseFile()
 {
   CSingleLock lock(m_critSection);
 
-  if (m_dll.IsLoaded())
+  if (m_dll.IsLoaded() && m_bIsPlaying)
   {
     m_dll.retro_unload_game();
     m_bIsPlaying = false;
