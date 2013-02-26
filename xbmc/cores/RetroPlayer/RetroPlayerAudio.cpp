@@ -126,7 +126,7 @@ void CRetroPlayerAudio::Process()
 
     // Discard extra data
     if (packet.size > 0 && !m_bStop)
-      CLog::Log(LOGNOTICE, "RetroPlayerAudio: %d bytes left over after rendering, discarding", packet.size);
+      CLog::Log(LOGNOTICE, "RetroPlayerAudio: %u bytes left over after rendering, discarding", (unsigned int)packet.size);
 
     // Clean up the data allocated in CRetroPlayer::OnAudioSampleBatch()
     delete[] packet.data;
