@@ -4,6 +4,7 @@ SRCS=Addon.cpp \
      AddonCallbacksCodec.cpp \
      AddonCallbacksGame.cpp \
      AddonCallbacksGUI.cpp \
+     AddonCallbacksHardware.cpp \
      AddonCallbacksPVR.cpp \
      AddonDatabase.cpp \
      AddonInstaller.cpp \

@@ -23,8 +23,10 @@
 #include "addons/include/xbmc_pvr_types.h"
 #include "addons/include/xbmc_codec_types.h"
 #include "addons/include/xbmc_game_callbacks.h"
+#include "addons/include/xbmc_hardware_callbacks.h"
 #include "../../addons/library.xbmc.addon/libXBMC_addon.h"
 #include "../../addons/library.xbmc.gui/libXBMC_gui.h"
+#include "AddonCallbacksHardware.h"
 
 typedef void (*AddOnLogCallback)(void *addonData, const ADDON::addon_log_t loglevel, const char *msg);
 typedef void (*AddOnQueueNotification)(void *addonData, const ADDON::queue_msg_t type, const char *msg);
@@ -284,6 +286,8 @@ typedef CB_PVRLib* (*XBMCPVRLib_RegisterMe)(void *addonData);
 typedef void (*XBMCPVRLib_UnRegisterMe)(void *addonData, CB_PVRLib *cbTable);
 typedef CB_GameLib* (*XBMCGameLib_RegisterMe)(void *addonData);
 typedef void (*XBMCGameLib_UnRegisterMe)(void *addonData, CB_GameLib *cbTable);
+typedef CB_HardwareLib* (*XBMCHardwareLib_RegisterMe)(void *addonData);
+typedef void (*XBMCHardwareLib_UnRegisterMe)(void *addonData, CB_HardwareLib *cbTable);
 
 typedef struct AddonCB
 {
@@ -299,6 +303,8 @@ typedef struct AddonCB
   XBMCPVRLib_UnRegisterMe    PVRLib_UnRegisterMe;
   XBMCGameLib_RegisterMe     GameLib_RegisterMe;
   XBMCGameLib_UnRegisterMe   GameLib_UnRegisterMe;
+  XBMCHardwareLib_RegisterMe     HardwareLib_RegisterMe;
+  XBMCHardwareLib_UnRegisterMe   HardwareLib_UnRegisterMe;
 } AddonCB;
 
 
@@ -311,6 +317,7 @@ class CAddonCallbacksCodec;
 class CAddonCallbacksGUI;
 class CAddonCallbacksPVR;
 class CAddonCallbacksGame;
+class CAddonCallbacksHardware;
 
 class CAddonCallbacks
 {
@@ -329,12 +336,15 @@ public:
   static void PVRLib_UnRegisterMe(void *addonData, CB_PVRLib *cbTable);
   static CB_GameLib* GameLib_RegisterMe(void *addonData);
   static void GameLib_UnRegisterMe(void *addonData, CB_GameLib *cbTable);
+  static CB_HardwareLib* HardwareLib_RegisterMe(void *addonData);
+  static void HardwareLib_UnRegisterMe(void *addonData, CB_HardwareLib *cbTable);
 
   CAddonCallbacksAddon *GetHelperAddon() { return m_helperAddon; }
   CAddonCallbacksCodec *GetHelperCodec() { return m_helperCODEC; }
   CAddonCallbacksGUI *GetHelperGUI() { return m_helperGUI; }
   CAddonCallbacksPVR *GetHelperPVR() { return m_helperPVR; }
   CAddonCallbacksGame *GetHelperGame() { return m_helperGame; }
+  CAddonCallbacksHardware *GetHelperHardware() { return m_helperHardware; }
 
 private:
   AddonCB             *m_callbacks;
@@ -344,6 +354,7 @@ private:
   CAddonCallbacksGUI   *m_helperGUI;
   CAddonCallbacksPVR   *m_helperPVR;
   CAddonCallbacksGame  *m_helperGame;
+  CAddonCallbacksHardware  *m_helperHardware;
 };
 
 }; /* namespace ADDON */
