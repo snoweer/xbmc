@@ -1,0 +1,33 @@
+ARCH=@ARCH@
+INCLUDES=-I. -I../../../xbmc/addons/include -I../../../addons/library.xbmc.addon -I../../../addons/library.xbmc.hardware
+DEFINES+=-DHAVE_LIBMPT
+CXXFLAGS=-fPIC
+LIBNAME=MediaReader
+OBJS=addon.o \
+     filesystem/Directory.o \
+     filesystem/DirectoryFactory.o \
+     filesystem/File.o \
+     filesystem/FileFactory.o \
+     filesystem/LibMtpDirectory.o \
+     filesystem/LibMtpFile.o \
+
+LIB_SHARED=../../../addons/hardware.mediareader/$(LIBNAME).so
+
+all: $(LIB_SHARED)
+
+$(LIB_SHARED): $(OBJS)
+ifeq ($(findstring osx,$(ARCH)), osx)
+	$(CXX) $(LDFLAGS) -Wl,-alias_list,@abs_top_srcdir@/xbmc/cores/DllLoader/exports/wrapper_mach_alias \
+	-bundle -undefined dynamic_lookup -o $@ \
+	@abs_top_srcdir@/xbmc/cores/DllLoader/exports/wrapper.o $(OBJS)
+else
+	$(CXX) $(CFLAGS) $(LDFLAGS) -shared -g -o $(LIB_SHARED) $(OBJS)
+endif
+
+CLEAN_FILES = \
+	$(LIB_SHARED) \
+
+DISTCLEAN_FILES= \
+	Makefile \
+
+include ../../../Makefile.include
