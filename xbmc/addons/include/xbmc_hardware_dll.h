@@ -70,13 +70,13 @@ extern "C"
    *    |
    *    |-metadata/
    *    |   |-metadata.yaml           requried   Metadata of ALL connected media in YAML format
-   *    |   |-metadata.json           required   Metadata of ALL connected media in JSON format
+   *    |   |-metadata.json           optional   Metadata of ALL connected media in JSON format
    *    |   |-metadata.proto          optional   Metadata of ALL connected media in protobuffers format
    *    |   |-metadata.xml            optional   Metadata of ALL connected media in XML format
    *    |
    *    |-settings/
    *        |-settings.yaml           requried   Current settings (using XMLRPC data types) in YAML format
-   *        |-settings.json           required   Current settings in JSON format
+   *        |-settings.json           optional   Current settings in JSON format
    *        |-settings.proto          optional   Current settings in protobuffers format
    *        |-settings.xml            optional   Current settings in XML format
    *
