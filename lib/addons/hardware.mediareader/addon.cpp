@@ -221,7 +221,7 @@ HARDWARE_ERROR MediaGetMetadata(MEDIA_READER_METADATA* metadata)
   if (!metadata)
     return HARDWARE_ERROR_INVALID_PARAMETERS;
 
-  CFile file('Media/metadata.yaml');
+  CFile file("Media/metadata.yaml");
 
   // Pass to YAML parser
 
