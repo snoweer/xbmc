@@ -59,8 +59,8 @@
   #define PRAGMA_PACK 1
 #endif
 
-// Checksum value when checksum cannot be computed or has not been computed yet
-#define HARDWARE_CHECKSUM_UNKNOWN        0x00000000
+// set the fanart_image or thumb to VFS_FILE_ITEM_LOGO to use the add-on's logo
+#define VFS_FILE_ITEM_LOGO               "[logo]"
 
 // System names are defined using strings for flexibility
 #define HARDWARE_SYSTEM_UNKNOWN          ""
@@ -77,7 +77,10 @@ extern "C"
 {
 #endif
 
-  /*! Hardware add-on error codes */
+  /*!
+   * Hardware types
+   */
+  ///{
   typedef enum HARDWARE_ERROR
   {
     HARDWARE_NO_ERROR                      =  0, // no error occurred
@@ -88,41 +91,171 @@ extern "C"
     HARDWARE_ERROR_NOT_CONNECTED           = -5, // the hardware is not connected
     HARDWARE_ERROR_CONNECTION_FAILED       = -6, // the hardware is connected, but command was interrupted
   } HARDWARE_ERROR;
+  ///}
 
-  enum HARDWARE_FILE_TYPE
+  /*!
+   * VFS types
+   */
+  ///{
+  typedef enum VFS_FILE_TYPE
   {
-    HARDWARE_FILE_TYPE_DIRECTORY    = S_IFDIR,  // Directory
-    HARDWARE_FILE_TYPE_CHAR_DEVICE  = S_IFCHR,  // Character device
-    HARDWARE_FILE_TYPE_BLOCK_DEVICE = S_IFBLK,  // Block device
-    HARDWARE_FILE_TYPE_FILE         = S_IFREG,  // Regular file
-    HARDWARE_FILE_TYPE_FIFO         = S_IFIFO,  // FIFO
-    HARDWARE_FILE_TYPE_SYMLINK      = S_IFLNK,  // Symbolic link
-    HARDWARE_FILE_TYPE_SOCKET       = S_IFSOCK, // Socket
-  };
+    VFS_FILE_TYPE_DIRECTORY    = 0040000, // Directory (S_IFDIR)
+    VFS_FILE_TYPE_CHAR_DEVICE  = 0020000, // Character device (S_IFCHR)
+    VFS_FILE_TYPE_BLOCK_DEVICE = 0060000, // Block device (S_IFBLK)
+    VFS_FILE_TYPE_FILE         = 0100000, // Regular file (S_IFREG)
+    VFS_FILE_TYPE_FIFO         = 0010000, // FIFO (S_IFIFO)
+    VFS_FILE_TYPE_SYMLINK      = 0120000, // Symbolic link (S_IFLNK)
+    VFS_FILE_TYPE_SOCKET       = 0140000, // Socket (S_IFSOCK)
+  } VFS_FILE_TYPE;
 
-  struct HARDWARE_FILE_STATUS
+  typedef struct VFS_FILE_STATUS
   {
-    HARDWARE_FILE_TYPE type;              // File type
-    int64_t            size;              // Total size, in bytes
-    int64_t            block_size;        // Blocksize for file system I/O
-    time_t             access_time;       // Time of last access
-    time_t             modification_time; // Time of last modification
-    uint32_t           device_id;         // ID of device containing the file
-  };
+    VFS_FILE_TYPE type;              // File type
+    int64_t       size;              // Total size, in bytes
+    int64_t       block_size;        // Blocksize for file system I/O
+    time_t        access_time;       // Time of last access
+    time_t        modification_time; // Time of last modification
+    uint32_t      device_id;         // ID of device containing the file
+    uint32_t      checksum_crc;      // CRC checksum of file (or 0x00000000 if unknown)
+  } ATTRIBUTE_PACKED VFS_FILE_STATUS;
 
-  typedef void* HARDWARE_HANDLE;
-
-  typedef struct HARDWARE_ADDON_FILEITEM
+  typedef enum
   {
-    char*                    name;
-  } ATTRIBUTE_PACKED HARDWARE_ADDON_FILEITEM;
+    VFS_FILE_ITEM_PROPERTY_TYPE_STRING,
+    VFS_FILE_ITEM_PROPERTY_TYPE_INT,
+    VFS_FILE_ITEM_PROPERTY_TYPE_DOUBLE
+  } VFS_FILE_ITEM_PROPERTY_TYPE;
 
-  typedef struct HARDWARE_ADDON_FILELIST
+  typedef struct VFS_FILE_ITEM_PROPERTY
   {
-    unsigned int             item_count;
-    HARDWARE_ADDON_FILEITEM* items;
-  } ATTRIBUTE_PACKED HARDWARE_ADDON_FILELIST;
+    char*                       key;
+    VFS_FILE_ITEM_PROPERTY_TYPE type;
+    union
+    {
+      int    iValue;
+      char*  strValue;
+      double fValue;
+    };
+  } ATTRIBUTE_PACKED VFS_FILE_ITEM_PROPERTY;
 
+  typedef enum VFS_FILE_ITEM_TYPE
+  {
+    VFS_FILE_ITEM_TYPE_ARTIST,
+    VFS_FILE_ITEM_TYPE_ALBUM,
+    VFS_FILE_ITEM_TYPE_SONG,
+    VFS_FILE_ITEM_TYPE_PLAYLIST,
+    VFS_FILE_ITEM_TYPE_VIDEO,
+    VFS_FILE_ITEM_TYPE_GENRE,
+    VFS_FILE_ITEM_TYPE_YEAR,
+    VFS_FILE_ITEM_TYPE_GAME,
+
+    VFS_FILE_ITEM_TYPE_DIRECTORY,
+    VFS_FILE_ITEM_TYPE_FILE
+  } VFS_FILE_ITEM_TYPE;
+
+  /*!
+   * Representation of a file or directory. Types are described below: (TODO actually describe them)
+   *
+   * VFS_FILE_ITEM_TYPE_ARTIST:
+   *   required string path
+   *   required string name
+   *   optional string genres
+   *   optional string biography
+   *   optional string styles
+   *   optional string moods
+   *   optional string born
+   *   optional string formed
+   *   optional string died
+   *   optional string disbanded
+   *   optional string years_active
+   *   optional string instruments
+   *   optional string thumb
+   *   optional string fanart_image
+   *
+   * VFS_FILE_ITEM_TYPE_ALBUM:
+   *   required string path
+   *   required string name
+   *   optional int    year
+   *   optional string artists
+   *   optional string genres
+   *   optional int    rating
+   *   optional string review
+   *   optional string styles
+   *   optional string moods
+   *   optional string themes
+   *   optional string label
+   *   optional string type
+   *   optional int    compilation
+   *   optional int    times_played
+   *   optional string thumb
+   *   optional string fanart_image
+   *
+   * VFS_FILE_ITEM_TYPE_SONG:
+   *   required string path
+   *   required string name
+   *   optional int    track
+   *   optional int    duration
+   *   optional int    rating
+   *   optional string artists
+   *   optional int    year
+   *   optional string album
+   *   optional string album_artists
+   *   optional string thumb
+   *   optional string fanart_image
+   *   optional string provider_icon    (relative to the add-on's path)
+   *
+   * VFS_FILE_ITEM_TYPE_PLAYLIST:
+   *   required string path
+   *   required string name
+   *   optional string thumb
+   *   optional string fanart_image
+   *
+   * VFS_FILE_ITEM_TYPE_GAME:
+   *   required string path
+   *   required string name
+   *   optional int    year
+   *   optional string thumb
+   *   optional string fanart_image
+   *   optional string provider_icon    (relative to the add-on's path)
+   *
+   * VFS_FILE_ITEM_TYPE_DIRECTORY:
+   *   required string path
+   *   required string name
+   *   optional string thumb
+   *   optional string fanart_image
+   *
+   * VFS_FILE_ITEM_TYPE_FILE:
+   *   required string path
+   *   required string name
+   *   optional string thumb
+   *   optional string fanart_image
+   *
+   * Properties that are found and that are not listed in this list will be
+   * added as standard properties to fileitems in XBMC.
+   *
+   * The following texts will be replaced by XBMC when used as file name:
+   *   [logo]   add-on icon
+   */
+  typedef struct VFS_FILE_ITEM
+  {
+    VFS_FILE_ITEM_TYPE      type;
+    unsigned int            property_count;
+    VFS_FILE_ITEM_PROPERTY* properties;
+  } ATTRIBUTE_PACKED VFS_FILE_ITEM;
+
+  typedef struct VFS_FILE_ITEM_LIST
+  {
+    unsigned int            item_count;
+    VFS_FILE_ITEM*          items;
+  } ATTRIBUTE_PACKED VFS_FILE_ITEM_LIST;
+
+  typedef void* VFS_HANDLE;
+  ///}
+
+  /*!
+   * Media reader types
+   */
+  ///{
   typedef enum MEDIA_READER_TYPE
   {
     MEDIA_READER_TYPE_CARTRIDGE,
@@ -130,45 +263,47 @@ extern "C"
     MEDIA_READER_TYPE_MULTIPLE,
   } MEDIA_READER_TYPE;
 
-  typedef struct MEDIA_ROM_METADATA
-  {
-    // ROM
-    char*                uri;           // Hardware API filename, beginning with Media/ROMs/
-    uint32_t             checksum;      // 32-bit CRC, or HARDWARE_CHECKSUM_UNKNOWN
-    uint32_t             size;          // ROM size in bytes
-
-    // Mapper
-    char*                mapper;        // Mapper hardware (NULL if unknown/not present)
-
-    // SRAM
-    char*                sram_uri;      // SRAM filename beginning with Media/Saves/, or NULL if no sram
-    uint32_t             sram_checksum; // 32-bit CRC, or HARDWARE_CHECKSUM_UNKNOWN
-    uint32_t             sram_size;     // SRAM size in bytes, or 0 if no sram
-
-    // TODO: Key/value pairs for game metadata
-  } ATTRIBUTE_PACKED MEDIA_ROM_METADATA;
-
+  /*!
+   * Port metadata is used to discover the available ROMs and SRAM data. Pass
+   * port_uri to FileGetDirectory() to access the ROM/SRAM provided by this port:
+   *
+   *   - If media is ejected, FileGetDirectory() will return true but yield no
+   *     files.
+   *
+   *   - If media has no SRAM, FileGetDirectory() will provide a single file item
+   *     (the ROM, possibly with additional file item metadata).
+   *
+   *   - If SRAM is present, FileGetDirectory() will return two files, one of
+   *     type VFS_FILE_ITEM_TYPE_GAME (the ROM) and one of type
+   *     VFS_FILE_ITEM_TYPE_FILE (the SRAM).
+   *
+   * The "path" property of the discovered file items can be passed to FileStat()
+   * for file size/checksum and FileRead() for ROM/SRAM data.
+   */
   typedef struct MEDIA_PORT_METADATA
   {
-    unsigned int         port_number;   // Identifies the port
     MEDIA_READER_TYPE    type;          // Media type of the port
-    char*                system;        // System name (see HARDWARE_SYSTEM #defines)
-    MEDIA_ROM_METADATA*  rom;           // ROM metadata, or NULL if media is ejected
+    char*                system;        // System type of the port (see HARDWARE_SYSTEM defines)
+    unsigned int         port_id;       // Identifies the port
+    char*                port_uri;      // Pass to FileGetDirectory() for ROM/SRAM access
   } ATTRIBUTE_PACKED MEDIA_PORT_METADATA;
 
   typedef struct MEDIA_READER_METADATA
   {
     char*                name;          // Name of the media reader hardware
-    MEDIA_READER_TYPE    type;          // The main port's type, or MULTIPLE if ports have multiple types
+    MEDIA_READER_TYPE    type;          // The main port's type, or MULTIPLE if ports have different types
     unsigned int         port_count;
     MEDIA_PORT_METADATA* ports;
   } ATTRIBUTE_PACKED MEDIA_READER_METADATA;
+  ///}
 
-  /*! Properties passed to the ADDON_Create() method of a hardware add-on */
-  typedef struct hardware_addon_properties
+  /*!
+   * Properties passed to the ADDON_Create() method of a hardware add-on
+   */
+  typedef struct HARDWARE_ADDON_PROPERTIES
   {
     // TODO
-  } hardware_addon_properties;
+  } ATTRIBUTE_PACKED HARDWARE_ADDON_PROPERTIES;
 
   /*!
    * Structure to transfer the methods from xbmc_hardware_dll.h to XBMC.
@@ -177,28 +312,26 @@ extern "C"
   {
     const char*    (__cdecl* GetHardwareAPIVersion)(void);
     const char*    (__cdecl* GetMinHardwareAPIVersion)(void);
-    const char*    (__cdecl* GetHardwareName)(void);
 
     /// @name Media reader operations
     ///{
     HARDWARE_ERROR (__cdecl* MediaGetMetadata)(struct MEDIA_READER_METADATA* metadata);
-    HARDWARE_ERROR (__cdecl* MediaSetPortMetadata)(const struct MEDIA_PORT_METADATA* metadata);
     void           (__cdecl* MediaFreeMetadata)(struct MEDIA_READER_METADATA* metadata);
     HARDWARE_ERROR (__cdecl* MediaEject)(unsigned int port);
     ///}
 
     /// @name VFS operations
     ///{
-    HARDWARE_ERROR (__cdecl* FileOpen)(const char*, HARDWARE_HANDLE*);
-    void           (__cdecl* FileClose)(HARDWARE_HANDLE);
-    uint64_t       (__cdecl* FileRead)(HARDWARE_HANDLE, void*, uint64_t);
+    HARDWARE_ERROR (__cdecl* FileOpen)(const char*, VFS_HANDLE*);
+    void           (__cdecl* FileClose)(VFS_HANDLE);
+    uint64_t       (__cdecl* FileRead)(VFS_HANDLE, void*, uint64_t);
+    int64_t        (__cdecl* FileSeek)(VFS_HANDLE, int64_t, int);
+    int64_t        (__cdecl* FileGetPosition)(VFS_HANDLE);
+    int64_t        (__cdecl* FileGetLength)(VFS_HANDLE);
     bool           (__cdecl* FileExists)(const char*);
-    bool           (__cdecl* FileStat)(const char*, struct HARDWARE_FILE_STATUS*);
-    int64_t        (__cdecl* FileSeek)(HARDWARE_HANDLE, int64_t, int);
-    int64_t        (__cdecl* FileGetPosition)(HARDWARE_HANDLE);
-    int64_t        (__cdecl* FileGetLength)(HARDWARE_HANDLE);
-    HARDWARE_ERROR (__cdecl* FileGetDirectory)(struct HARDWARE_ADDON_FILELIST*, const char*);
-    void           (__cdecl* FreeFileList)(struct HARDWARE_ADDON_FILELIST*);
+    bool           (__cdecl* FileStat)(const char*, struct FILE_STATUS*);
+    HARDWARE_ERROR (__cdecl* FileGetDirectory)(struct VFS_FILE_ITEM_LIST*, const char*);
+    void           (__cdecl* FreeFileList)(struct VFS_FILE_ITEM_LIST*);
     ///}
   } HardwareAddon;
 

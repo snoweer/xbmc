@@ -65,6 +65,7 @@ struct FILE_STATUS
   time_t    access_time;       // Time of last access
   time_t    modification_time; // Time of last modification
   uint32_t  device_id;         // ID of device containing the file
+  uint32_t  checksum_crc;      // CRC checksum of file (or 0x00000000 if unknown)
 };
 
 /*!

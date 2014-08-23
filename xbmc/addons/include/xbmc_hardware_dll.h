@@ -21,6 +21,7 @@
 #define XBMC_HARDWARE_DLL_H_
 
 #define HARDWARE_ADDON_MEDIA_READER // Remove this line in production
+#define HARDWARE_ADDON_VFS          // Necessary for MEDIA_READER
 
 #include "xbmc_hardware_types.h"
 
@@ -45,11 +46,87 @@ extern "C"
   const char* GetMinHardwareAPIVersion(void);
 
   /*!
-   * Get the name of the hardware that will be displayed in the UI.
-   * @return The name of the hardware that this add-on interfaces with.
-   * @remarks Valid implementation required.
+   * VFS functions to support interfaces that transfer data
    */
-  const char* GetHardwareName(void);
+  ///{
+#if defined(HARDWARE_ADDON_VFS)
+  /*!
+   * Open a file to be read by FileRead
+   * @param strFileName The file to open
+   * @param handle The handle for this file, set by the add-on, that is passed to file operations.
+   * @return true if the file has been opened successfully.
+   */
+  bool FileOpen(const char* fileName, VFS_HANDLE* handle);
+
+  /*!
+   * Close a file opened by FileOpen, and invalidate the handle
+   * @param handle The handle to close
+   */
+  void FileClose(VFS_HANDLE handle);
+
+  /*!
+   * Read raw bytes from a file that has been opened with FileOpen
+   * @param handle The handle assigned by FileOpen
+   * @param pBuffer The buffer to write the data to
+   * @param iBufLen The maximum size to read
+   * @return The number of bytes that were added to the buffer
+   */
+  uint64_t FileRead(VFS_HANDLE handle, void* pBuffer, uint64_t iBufLen);
+
+  /*!
+   * Seek to the given position
+   * @param handle The handle of the file to seek
+   * @param iFilePosition The position to seek to
+   * @param iWhence Seek type. See stdio.h for possible value
+   * @return The new file position, or -1 if unknown
+   */
+  int64_t FileSeek(VFS_HANDLE handle, int64_t iFilePosition, int iWhence);
+
+  /*!
+   * Get the current position
+   * @param handle The handle of the file to get the position for
+   * @return The position. -1 when eof or not found
+   */
+  int64_t FileGetPosition(VFS_HANDLE handle);
+
+  /*!
+   * Total number of bytes in an open file
+   * @param handle The handle of the file to get the length for
+   * @return The total length or -1 when not found
+   */
+  int64_t FileGetLength(VFS_HANDLE handle);
+
+  /*!
+   * Check whether the add-on can open a file
+   * @param strFileName The file to check
+   * @return true when the file can be opened, false otherwise
+   */
+  bool FileExists(const char* strFileName);
+
+  /*!
+   * Perform a stat operation on the specified file
+   * @param strFileName The file to stat
+   * @param buffer The zero-initialized stat structure
+   * @return true is returned on success, false is returned on error
+   */
+  bool FileStat(const char* strFileName, struct VFS_FILE_STATUS* buffer);
+
+  /*!
+   * Get the files in a directory
+   * @param directory The directory contents. Must be freed by calling FreeFileList when done
+   * @param strPath The directory to get
+   * @return true if the files were assigned successfully
+   */
+  bool FileGetDirectory(struct VFS_FILE_ITEM_LIST* directory, const char* strPath);
+
+  /*!
+   * Free a file list allocated by the add-on
+   * @param items The file list to free
+   */
+  void FreeFileList(struct VFS_FILE_ITEM_LIST* items);
+
+#endif // HARDWARE_ADDON_VFS
+  ///}
 
   /*!
    * The media reader sub-interface abstracts cartridge readers and CD/DVD drives.
@@ -95,19 +172,6 @@ extern "C"
   HARDWARE_ERROR MediaGetMetadata(struct MEDIA_READER_METADATA* metadata);
 
   /*!
-   * Override metadata auto-detected by the metadata reader. This can be used
-   * if the reader reports incorrect sizes or mappers. The port_number field of
-   * identifies the media reader's port, so this is typically called after
-   * changing the result of MediaGetMetadata(). If a field contains an unchanged
-   * or invalid value, it will be ignored.
-   * @param metadata The handle for the metadata. NOTE this is of type
-   *                 MEDIA_PORT_METADATA*, not MEDIA_READER_METADATA* as
-   *                 returned by MediaGetMetadata()
-   * @remarks Optional, in which case HARDWARE_ERROR_NOT_IMPLEMENTED should be returned.
-   */
-  HARDWARE_ERROR MediaSetPortMetadata(const struct MEDIA_PORT_METADATA* metadata);
-
-  /*!
    * Free a metadata struct allocated by the add-on.
    * @param metadata The metadata struct to free.
    * @remarks Valid implementation required if HARDWARE_ADDON_MEDIA_READER is defined.
@@ -124,89 +188,6 @@ extern "C"
 #endif // HARDWARE_ADDON_MEDIA_READER
   ///}
 
-  /*!
-   * VFS functions to support interfaces that transfer data
-   */
-  ///{
-#if defined(HARDWARE_ADDON_MEDIA_READER)
-  /*!
-   * Open a file to be read by FileRead
-   * @param strFileName The file to open
-   * @param handle The handle for this file, set by the add-on, that is passed to file operations.
-   * @return HARDWARE_NO_ERROR when the file has been opened successfully.
-   */
-  HARDWARE_ERROR FileOpen(const char* fileName, HARDWARE_HANDLE* handle);
-
-  /*!
-   * Close a file opened by FileOpen, and invalidate the handle
-   * @param handle The handle to close
-   */
-  void FileClose(HARDWARE_HANDLE handle);
-
-  /*!
-   * Read raw bytes from a file that has been opened with FileOpen
-   * @param handle The handle assigned by FileOpen
-   * @param pBuffer The buffer to write the data to
-   * @param iBufLen The maximum size to read
-   * @return The number of bytes that were added to the buffer
-   */
-  uint64_t FileRead(HARDWARE_HANDLE handle, void* pBuffer, uint64_t iBufLen);
-
-  /*!
-   * Check whether the add-on can open a file
-   * @param strFileName The file to check
-   * @return true when the file can be opened, false otherwise
-   */
-  bool FileExists(const char* strFileName);
-
-  /*!
-   * Perform a stat operation on the specified file
-   * @param strFileName The file to stat
-   * @param buffer The zero-initialized stat structure
-   * @return true is returned on success, false is returned on error
-   */
-  bool FileStat(const char* strFileName, struct HARDWARE_FILE_STATUS* buffer);
-
-  /*!
-   * Seek to the given position
-   * @param handle The handle of the file to seek
-   * @param iFilePosition The position to seek to
-   * @param iWhence Seek type. See stdio.h for possible value
-   * @return The new file position, or -1 if unknown
-   */
-  int64_t FileSeek(HARDWARE_HANDLE handle, int64_t iFilePosition, int iWhence);
-
-  /*!
-   * Get the current position
-   * @param handle The handle of the file to get the position for
-   * @return The position. -1 when eof or not found
-   */
-  int64_t FileGetPosition(HARDWARE_HANDLE handle);
-
-  /*!
-   * Total number of bytes in an open file
-   * @param handle The handle of the file to get the length for
-   * @return The total length or -1 when not found
-   */
-  int64_t FileGetLength(HARDWARE_HANDLE handle);
-
-  /*!
-   * Get the files in a directory
-   * @param directory The directory contents. Must be freed by calling FreeFileList when done
-   * @param strPath The directory to get
-   * @return HARDWARE_NO_ERROR if the files were assigned successfully
-   */
-  HARDWARE_ERROR FileGetDirectory(struct HARDWARE_ADDON_FILELIST* directory, const char* strPath);
-
-  /*!
-   * Free a file list allocated by the add-on
-   * @param items The file list to free
-   */
-  void FreeFileList(struct HARDWARE_ADDON_FILELIST* items);
-
-#endif // HARDWARE_ADDON_MEDIA_READER
-  ///}
-
 
   /*!
    * Called by XBMC to assign the function pointers of this add-on to pClient.
@@ -218,9 +199,7 @@ extern "C"
   {
     pClient->GetHardwareAPIVersion    = GetHardwareAPIVersion;
     pClient->GetMinHardwareAPIVersion = GetMinHardwareAPIVersion;
-    pClient->GetHardwareName          = GetHardwareName;
     pClient->MediaGetMetadata         = MediaGetMetadata;
-    pClient->MediaSetPortMetadata     = MediaSetPortMetadata;
     pClient->MediaFreeMetadata        = MediaFreeMetadata;
     pClient->MediaEject               = MediaEject;
     pClient->FileOpen                 = FileOpen;
