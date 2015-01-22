@@ -1,70 +1,40 @@
-include ../../Makefile.include
-#DEPS= ../../Makefile.include Makefile
+-include ../../Makefile.include
 
-LIBNAME=xbmc-peripheral-addons
-VERSION=7dcc019909510ce27af37d05f797a0b77e1e6f29
-GIT_DIR=$(TARBALLS_LOCATION)/$(LIBNAME).git
-BASE_URL=git://github.com/garbear/$(LIBNAME).git
-DYLIB=$(PLATFORM)/addons/peripheral.joysticks/.libs/libjoysticks-addon.so
-XBMC_ADDONSDIR=../../../../addons
+ADDONS = "peripheral.joystick"
+ifeq ($(PLATFORM),)
+  PLATFORM = native
+endif
+ifeq ($(CMAKE),)
+  CMAKE = cmake
+endif
 
-#tell git to use the addons repo rather than xbmc's repo
-export GIT_DIR
-export GIT_WORK_TREE=$(PLATFORM)
-
-#mysql_config is remarkably useless. Help configure find the right one.
-export MYSQL_CONFIG=$(PREFIX)/bin/mysql_config
-
-# configuration settings
-CONFIGURE=./configure --prefix=$(PREFIX)
+CMAKE_EXTRA =
+ifeq (darwin, $(findstring darwin, $(HOST)))
+  INSTALL_PREFIX = ../../../../../addons/
+  CMAKE_EXTRA = -DPACKAGE_ZIP=1 -DDEPENDS_PATH=$(PREFIX)
+else ifneq ($(PREFIX),)
+  INSTALL_PREFIX = $(PREFIX)
+  CMAKE_EXTRA = -DDEPENDS_PATH=$(PREFIX)
+endif
 
 all: .installed-$(PLATFORM)
 
-$(GIT_DIR)/HEAD:
-	cd $(TARBALLS_LOCATION); git clone --bare $(BASE_URL)
-
-$(GIT_DIR)/current/$(VERSION): $(GIT_DIR)/HEAD $(DEPS)
-	git rev-list -1 $(VERSION) >/dev/null || git fetch origin "+refs/heads/*:refs/remotes/origin/*"
-	git rev-list -1 $(VERSION) >/dev/null
-	rm -rf $(GIT_DIR)/current; mkdir -p $(GIT_DIR)/current
-	touch $@
-
-$(PLATFORM)/bootstrap: $(GIT_DIR)/current/$(VERSION)
-	rm -rf $(PLATFORM); mkdir -p $(PLATFORM)
-	git checkout $(VERSION) -- .
-
-$(PLATFORM)/configure: $(PLATFORM)/bootstrap
-	cd $(PLATFORM); ./bootstrap
-
-$(PLATFORM)/Makefile: $(PLATFORM)/configure
-	cd $(PLATFORM); $(CONFIGURE)
-
-$(DYLIB): $(PLATFORM)/Makefile
-	make -C $(PLATFORM)
-	#mkdir -p $(PREFIX)/lib/xbmc/addons/content.xxx
-	#cp -f $(PREFIX)/lib/libxxx.so $(PREFIX)/lib/xbmc/addons/content.xxx/.
-	touch $@
-
-.installed-$(PLATFORM): $(DYLIB)
-ifeq (darwin, $(findstring darwin, $(HOST)))
-	for ADDON in `find $(PLATFORM)/addons -type d -name "peripheral.*"`; do \
-	  ADDON=`basename $$ADDON` ; \
-	  mkdir -p $(XBMC_ADDONSDIR)/$$ADDON ; \
-	  cp -PRf $(PLATFORM)/addons/$$ADDON/addon/* $(XBMC_ADDONSDIR)/$$ADDON ; \
-	  cp -Pf $(PLATFORM)/addons/$$ADDON/*.so $(XBMC_ADDONSDIR)/$$ADDON ; \
-	  install_name_tool -id "$$ADDON" `find "$(XBMC_ADDONSDIR)/$$ADDON" -type f -name "*.so"` ; \
-	done
-else
-	$(MAKE) -C $(PLATFORM) install
-endif
-	touch $@
 
 clean:
-	-make -C $(PLATFORM) clean
 	rm -f .installed-$(PLATFORM)
 
-distclean::
-	rm -rf $(PLATFORM) .installed-$(PLATFORM)
-	rm -rf $(GIT_DIR)/current
+distclean:
+	rm -rf $(PLATFORM) .installed-$(PLATFORM) native
 
-
+.installed-$(PLATFORM):
+ifeq ($(PREFIX),)
+	@echo
+	@echo "ERROR: please set PREFIX to the xbmc install path e.g. make PREFIX=/usr/local"
+	@exit 1
+endif
+	mkdir -p $(PLATFORM); \
+         cd $(PLATFORM); \
+         $(CMAKE) -DCMAKE_INSTALL_PREFIX=$(INSTALL_PREFIX) -DCMAKE_PREFIX_PATH=$(PREFIX) $(CMAKE_EXTRA) \
+         -DADDONS_TO_BUILD=$(ADDONS) ../../../../../project/cmake/addons/ ;\
+         $(MAKE);
+	touch $@
